@@ -11,6 +11,7 @@ export default {
     data.todoLists = {};
     data.repeating_events = {};
     data.repeating_events_by_date = {};
+    data.tasks = {};
     let db_req = dbRepository.open();
 
     db_req.onsuccess = function (event) {
@@ -22,7 +23,7 @@ export default {
           data.todoLists[cursor.key] = cursor.value;
           cursor.continue();
         } else {
-          getRepeatinEventData(filename, data, event);
+          getTasksData(filename, data, event);
         }
       };
     };
@@ -67,6 +68,20 @@ export default {
     };
   },
 };
+
+function getTasksData(filename, data, event) {
+  var db = event.target.result;
+  let request = dbRepository.selectAll(db, "tasks");
+  request.onsuccess = function () {
+    let cursor = request.result;
+    if (cursor) {
+      data.tasks[cursor.key] = cursor.value;
+      cursor.continue();
+    } else {
+      getRepeatinEventData(filename, data, event);
+    }
+  };
+}
 
 function getRepeatinEventData(filename, data, event) {
   var db = event.target.result;
@@ -152,6 +167,10 @@ function importDbRecords(db, data_a, table) {
   if (table == "todo_lists") {
     keys = Object.keys(data_a.todoLists);
     data = data_a.todoLists;
+  } else if (table == "tasks") {
+    if (!('tasks' in data_a)) return; // Skip if tasks not exist in backup
+    keys = Object.keys(data_a.tasks);
+    data = data_a.tasks;
   } else if (table == "repeating_events") {
     if (!('repeating_events' in data_a)) location.reload(); // if not exist is an old data, finish the import and reload
     keys = Object.keys(data_a.repeating_events);
@@ -166,6 +185,8 @@ function importDbRecords(db, data_a, table) {
 
   if (i == 0) {
     if (table == "todo_lists") {
+      importIndexedDbData(data_a, "tasks");
+    } else if (table == "tasks") {
       importIndexedDbData(data_a, "repeating_events");
     } else if (table == "repeating_events") {
       importIndexedDbData(data_a, "repeating_events_by_date");
@@ -178,6 +199,8 @@ function importDbRecords(db, data_a, table) {
     }
     req.onsuccess = function () {
       if (table == "todo_lists") {
+        importIndexedDbData(data_a, "tasks");
+      } else if (table == "tasks") {
         importIndexedDbData(data_a, "repeating_events");
       } else if (table == "repeating_events") {
         importIndexedDbData(data_a, "repeating_events_by_date");

@@ -132,9 +132,19 @@ export default {
       toDoListRepository.update(this.activeTodo.toDoListId, this.$store.getters.todoLists[this.activeTodo.toDoListId]);
     },
     timeFormat: function (date) {
-      if (date) {
-        return moment(date, "HH:mm").format("hh:mm a");
+      if (!date) return '';
+      
+      // 如果date是对象且包含start和end字段，表示这是一个时间范围
+      if (typeof date === 'object' && date.start) {
+        let formattedTime = moment(date.start, "HH:mm").format("hh:mm a");
+        if (date.end) {
+          formattedTime += ' - ' + moment(date.end, "HH:mm").format("hh:mm a");
+        }
+        return formattedTime;
       }
+      
+      // 兼容旧格式的单一时间
+      return moment(date, "HH:mm").format("hh:mm a");
     },
     linkifyText: function (text) {
       return linkifyStr(text, this.options);

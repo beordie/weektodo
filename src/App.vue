@@ -4,10 +4,15 @@
     <div class="hidden-mobile app-body" :style="{ zoom: `${zoom}%` }">
       <splash-screen ref="splash"></splash-screen>
       <side-bar @change-date="setSelectedDate"></side-bar>
+      
+      <!-- Task Management Components -->
+    <task-management v-show="showTaskManagement && !showTaskCategoryManagement && !showTaskKanban"></task-management>
+    <task-category-management v-show="showTaskCategoryManagement && !showTaskKanban"></task-category-management>
+    <task-kanban v-show="showTaskKanban"></task-kanban>
 
-      <div class="h-100 d-flex flex-column">
+    <div class="h-100 d-flex flex-column">
         <div
-          v-show="showCalendar"
+          v-show="showCalendar && !showTaskKanban"
           class="todo-lists-container"
           :style="resizableStyle"
           ref="calendarContainer"
@@ -32,7 +37,7 @@
         </div>
 
         <div
-          v-show="showCustomList && showCalendar"
+          v-show="showCustomList && showCalendar && !showTaskKanban"
           class="main-horizontal-divider"
           id="resizer"
           :class="mainDividerPositionClass"
@@ -65,7 +70,7 @@
         </div>
 
         <div
-          v-show="showCustomList"
+          v-show="showCustomList && !showTaskKanban"
           class="todo-lists-container"
           :class="{
             'full-screen': !showCalendar,
@@ -121,6 +126,8 @@
       <importing-modal :id="'exportingModal'" :text="$t('settings.exporting')"></importing-modal>
 
       <reorder-custom-lists-modal @reset-custom-list="resetCustomList"></reorder-custom-lists-modal>
+      
+
     </div>
     <div class="mobile d-flex flex-column justify-content-center align-items-center">
       <i class="bi-exclamation-diamond mb-4" style="font-size: 100px"></i>
@@ -181,6 +188,8 @@ import ReorderCustomListsModal from "./views/ReorderCustomListsModal.vue";
 import toastMessage from "./components/toastMessage";
 import activeToDo from "./components/activeToDo.vue";
 import tasksHelper from "./helpers/tasksHelper";
+import TaskManagement from "./views/TaskManagement.vue";
+import TaskKanban from "./views/TaskKanban.vue";
 
 export default {
   name: "App",
@@ -202,6 +211,8 @@ export default {
     clearListModal,
     toastMessage,
     activeToDo,
+    TaskManagement,
+    TaskKanban,
   },
   data() {
     return {
@@ -251,19 +262,23 @@ export default {
       }
     };
 
-    if (isElectron()) {
-      const { ipcRenderer } = require("electron");
-      this.ipcRenderer = ipcRenderer;
-      if (this.$store.getters.config.firstTimeOpen) this.ipcRenderer.send("show-current-window");
-      this.ipcRenderer.send("match-open-on-startup", this.$store.getters.config.openOnStartup);
-    }
-
-    if (this.$store.getters.config.importing) {
-      this.$store.commit("updateConfig", { val: false, key: "importing" });
-      configRepository.update(this.$store.getters.config);
+    try {
       if (isElectron()) {
-        this.syncElectronConfig();
+        const { ipcRenderer } = require("electron");
+        this.ipcRenderer = ipcRenderer;
+        if (this.$store.getters.config.firstTimeOpen) this.ipcRenderer.send("show-current-window");
+        this.ipcRenderer.send("match-open-on-startup", this.$store.getters.config.openOnStartup);
       }
+
+      if (this.$store.getters.config.importing) {
+        this.$store.commit("updateConfig", { val: false, key: "importing" });
+        configRepository.update(this.$store.getters.config);
+        if (isElectron()) {
+          this.syncElectronConfig();
+        }
+      }
+    } catch (error) {
+      console.warn('Electron模块不可用，在浏览器环境中运行:', error);
     }
 
     this.resetAppOnDayChange();
@@ -550,6 +565,13 @@ export default {
       ipcRenderer.send("set-run-in-background", this.$store.getters.config.runInBackground);
       ipcRenderer.send("set-dark-tray-icon", this.$store.getters.config.darkTrayIcon);
     },
+    // Task Management methods
+    closeTaskManagement() {
+      this.$store.commit('showTaskManagement', false);
+    },
+    closeTaskCategoryManagement() {
+      this.$store.commit('showTaskCategoryManagement', false);
+    },
   },
   computed: {
     dates_array: function () {
@@ -570,9 +592,17 @@ export default {
       return dates_array;
     },
     showCustomList: function () {
+      // 当显示任务管理或任务分类管理页面时，不显示自定义列表
+      if (this.showTaskManagement || this.showTaskCategoryManagement) {
+        return false;
+      }
       return this.$store.getters.config.customList;
     },
     showCalendar: function () {
+      // 当显示任务管理或任务分类管理页面时，不显示日历（todo页面）
+      if (this.showTaskManagement || this.showTaskCategoryManagement) {
+        return false;
+      }
       return this.$store.getters.config.calendar;
     },
     columns: function () {
@@ -624,6 +654,16 @@ export default {
       if (!this.$store.getters.config.customList || !this.$store.getters.config.calendar) return false;
 
       return this.$store.getters.config.mainDividerPosition == 0 ? true : false;
+    },
+    // Task Management computed properties
+    showTaskManagement() {
+      return this.$store.getters.showTaskManagement;
+    },
+    showTaskCategoryManagement() {
+      return this.$store.getters.showTaskCategoryManagement;
+    },
+    showTaskKanban() {
+      return this.$store.getters.showTaskKanban;
     },
   },
 };
@@ -765,6 +805,25 @@ body {
 .hidden-input-for-focus {
   position: absolute;
   top: -100px;
+}
+
+/* Task Management Styles */
+.task-management,
+.task-category-management {
+  position: absolute;
+  top: 0;
+  left: 72px;
+  right: 0;
+  bottom: 0;
+  z-index: 100;
+  background-color: white;
+  overflow-y: auto;
+}
+
+.dark-theme .task-management,
+.dark-theme .task-category-management {
+  background-color: #13171d;
+  color: #c9d1d9;
 }
 
 .main-horizontal-divider {

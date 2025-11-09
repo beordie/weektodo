@@ -3,6 +3,7 @@ const state = {
     clicksTimer: null,
     undoElement: null,
     listToClearId: null,
+    currentTaskId: null
 }
 
 const getters = {
@@ -17,6 +18,9 @@ const getters = {
     },
     listToClearId(state) {
         return state.listToClearId;
+    },
+    currentTaskId(state) {
+        return state.currentTaskId;
     }
 }
 
@@ -32,6 +36,9 @@ const mutations = {
     },
     setListToClear(state, obj) {
         state.listToClearId = obj;
+    },
+    setCurrentTaskId(state, obj) {
+        state.currentTaskId = obj;
     }
 }
 

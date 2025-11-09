@@ -29,6 +29,8 @@
       :weekStartsOn="weekStartOnMonday"
     />
     <i v-if="showCalendar" class="bi-calendar-event" @click="changeDate" :title="$t('ui.calendar')"> </i>
+    <!-- 任务管理图标 -->
+    <i id="btnTaskManagement" class="bi bi-person-workspace" @click="manageCategories" :title="$t('taskManagement.title')"></i>
     <!-- <i class="bi-search" :title="$t('donate.supportUs')"></i>
     <i class="bi-filter" :title="$t('donate.supportUs')" ></i> -->
     <i
@@ -129,6 +131,10 @@ export default {
       });
     },
     setTodayDate: function () {
+      // 关闭任务管理相关页面
+      this.$store.commit('showTaskManagement', false);
+      this.$store.commit('showTaskCreationModal', false);
+      // 设置当前日期
       this.$emit("changeDate", moment().format("YYYYMMDD"));
     },
     newCustomTodoList: function () {
@@ -147,6 +153,14 @@ export default {
     },
     openDonateModal: function () {
       window.open("https://weektodo.me/support-us", "_blank");
+    },
+    manageCategories: function () {
+      // 显示任务管理页面（作为独立页面）
+      this.$store.commit('showTaskManagement', true);
+      // 确保任务分类管理页面不显示
+      this.$store.commit('showTaskCategoryManagement', false);
+      // 可选：隐藏其他可能干扰的组件
+      // this.$store.commit('showCalendar', false);
     },
     print: function () {
       window.print();

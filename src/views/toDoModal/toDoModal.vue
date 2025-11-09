@@ -48,6 +48,7 @@
             </div>
           </div>
           <div class="d-flex ms-auto align-items-center">
+            <task-selector :task="todo.task" @task-selected="changeTask"></task-selector>
             <time-picker :time="todo.time" @time-selected="changeTime"></time-picker>
             <i :class="{ 'bi-bell': !todo.alarm, 'bi-bell-fill': todo.alarm }" class="header-menu-icons"
               @click="changeAlarm" :title="$t('todoDetails.alarm')"></i>
@@ -169,6 +170,7 @@ import linkifyStr from 'linkify-string';
 import ClickHandler from "@manuelernestog/click-handler";
 import tasksHelper from "../../helpers/tasksHelper";
 import descriptionTextArea from './descriptionTextArea.vue'
+import taskSelector from './taskSelector.vue'
 
 export default {
   name: "toDoModal",
@@ -184,6 +186,7 @@ export default {
         desc: "",
         subTaskList: [],
         alarm: false,
+        task: ""
       },
       todoList: null,
       index: 0,
@@ -207,7 +210,8 @@ export default {
     timePicker,
     repeatingEvent,
     comfirmModal,
-    descriptionTextArea
+    descriptionTextArea,
+    taskSelector
   },
   methods: {
     removeSubTask: function (index) {
@@ -412,6 +416,7 @@ export default {
         tags: [],
         time: this.todo.time,
         alarm: this.todo.alarm,
+        task: this.todo.task,
         repeatingEvent: null,
       };
       this.$store.commit("addTodo", newTodo);
@@ -433,6 +438,9 @@ export default {
     todoToString() {
       var text = "";
       text += this.todo.text;
+      if (this.todo.task) {
+        text += " [" + this.todo.task + "]";
+      }
       if (this.todo.desc != "") {
         text += "\n\n";
         text += this.$t("todoDetails.notes") + ":\n\n";
@@ -457,6 +465,10 @@ export default {
         this.todo.alarm = false;
       }
       this.updateTodoWithReorder();
+    },
+    changeTask(task) {
+      this.todo.task = task;
+      this.updateTodo();
     },
     changeAlarm() {
       if (this.todo.time) {
@@ -650,6 +662,11 @@ export default {
 .todo-title-empty-title {
   color: grey;
   margin-left: -8px;
+}
+
+.task-selector-container {
+  margin-top: 8px;
+  margin-bottom: 8px;
 }
 
 

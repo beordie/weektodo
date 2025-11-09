@@ -8,7 +8,7 @@
   >
     <i
       id="btnTaskTimePicker"
-      :class="{ 'bi-alarm': !selectedTime, 'bi-alarm-fill': selectedTime }"
+      :class="{ 'bi-alarm': !startTime && !endTime, 'bi-alarm-fill': startTime || endTime }"
     ></i>
   </div>
 
@@ -16,16 +16,28 @@
     class="dropdown-menu color-picker-dropdown"
     aria-labelledby="btnTaskTimePicker"
   >
-    <div class="d-flex align-items-center mx-3">
+    <div class="d-flex align-items-center mx-3 mb-2">
+      <label for="taskStartTime" class="mr-2">开始时间</label>
       <input
+        id="taskStartTime"
         type="time"
-        v-model="selectedTime"
-        @blur="selectTime(selectedTime)"
+        v-model="startTime"
+        @blur="selectTimeRange()"
+      />
+    </div>
+    <div class="d-flex align-items-center mx-3">
+      <label for="taskEndTime" class="mr-2">结束时间</label>
+      <input
+        id="taskEndTime"
+        type="time"
+        v-model="endTime"
+        @blur="selectTimeRange()"
       />
       <i
         class="header-menu-icons bi-trash"
         type="button"
         @click="clearTime"
+        title="清除时间"
       ></i>
     </div>
   </ul>
@@ -37,24 +49,39 @@ export default {
   emits: ["timeSelected"],
   data() {
     return {
-      selectedTime: "",
+      startTime: "",
+      endTime: ""
     };
   },
   props: {
-    time: { required: true, type: [String, null] },
+    time: { required: true, type: [Object, String, null] },
   },
   methods: {
-    selectTime(time) {
-      this.$emit("timeSelected", time);
+    selectTimeRange() {
+      // 构建包含开始和结束时间的对象
+      const timeRange = {
+        start: this.startTime || null,
+        end: this.endTime || null
+      };
+      this.$emit("timeSelected", timeRange);
     },
     clearTime() {
-      this.selectedTime = null;
-      this.selectTime(this.selectedTime);
+      this.startTime = null;
+      this.endTime = null;
+      this.selectTimeRange();
     },
   },
   watch: {
     time: function (newVal) {
-      this.selectedTime = newVal;
+      // 处理传入的时间数据
+      if (typeof newVal === 'object' && newVal !== null) {
+        this.startTime = newVal.start || '';
+        this.endTime = newVal.end || '';
+      } else {
+        // 保持向后兼容，处理字符串格式的时间
+        this.startTime = newVal || '';
+        this.endTime = '';
+      }
     },
   },
 };
@@ -70,6 +97,7 @@ export default {
 
 .bi-trash {
   margin: 0px;
+  cursor: pointer;
 }
 
 input[type="time"] {

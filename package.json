@@ -45,10 +45,12 @@
     "moment": "^2.29.1",
     "rrule": "^2.6.9",
     "vue": "^3.2.26",
+    "vue-github-calendar": "^0.1.2",
     "vue-i18n": "^9.1.9",
     "vue3-datepicker": "^0.2.5",
     "vuex": "^4.0.2",
-    "webpack": "4.46.0"
+    "webpack": "4.46.0",
+    "yarn": "^1.22.22"
   },
   "devDependencies": {
     "@vue/cli-plugin-babel": "^4.5.15",
