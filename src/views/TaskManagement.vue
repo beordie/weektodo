@@ -133,6 +133,7 @@
           'overdue': !task.completed && isOverdue(task),
           'due-soon': !task.completed && isDueSoon(task)
         }"
+        :style="{ borderLeft: `4px solid ${task.color || '#2196F3'}` }"
         @click="openTaskDetails(task.id)"
       >
         <div class="task-card-header">
@@ -305,6 +306,28 @@
               </div>
             </div>
             <div class="form-group">
+              <label for="taskColor">{{ $t('taskManagement.taskColor') }}</label>
+              <div class="color-picker-container">
+                <input 
+                  id="taskColor" 
+                  v-model="currentTask.color" 
+                  type="color" 
+                  class="form-control color-input"
+                >
+                <div class="color-swatches">
+                  <div 
+                    v-for="color in ['#2196F3', '#4CAF50', '#FF9800', '#F44336', '#9C27B0', '#00BCD4', '#FFC107', '#795548']" 
+                    :key="color"
+                    class="color-swatch"
+                    :style="{ backgroundColor: color }"
+                    :class="{ active: currentTask.color === color }"
+                    @click="currentTask.color = color"
+                    :title="color"
+                  ></div>
+                </div>
+              </div>
+            </div>
+            <div class="form-group">
               <label class="checkbox-label">
                 <input 
                   v-model="currentTask.completed" 
@@ -327,7 +350,61 @@
       </div>
     </div>
   </div>
-</template>
+  </template>
+  
+  <style scoped>
+  .color-picker-container {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  
+  .color-input {
+    height: 40px;
+    width: 100%;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+  
+  .color-swatches {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  
+  .color-swatch {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    cursor: pointer;
+    border: 2px solid transparent;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+  
+  .color-swatch:hover {
+    transform: scale(1.1);
+    box-shadow: 0 3px 6px rgba(0, 0, 0, 0.15);
+  }
+  
+  .color-swatch.active {
+    border-color: #333;
+    transform: scale(1.1);
+    box-shadow: 0 3px 6px rgba(0, 0, 0, 0.2);
+  }
+  
+  @media (max-width: 768px) {
+    .color-swatches {
+      justify-content: center;
+    }
+    
+    .color-swatch {
+      width: 28px;
+      height: 28px;
+    }
+  }
+  </style>
 
 <script>
 import moment from 'moment';
@@ -353,6 +430,7 @@ export default {
         priority: 'medium',
         completed: false,
         todos: [],
+        color: '#2196F3',
       },
     };
   },
@@ -429,6 +507,7 @@ export default {
         priority: 'medium',
         completed: false,
         todos: [],
+        color: '#2196F3',
       };
       this.showModal = true;
     },

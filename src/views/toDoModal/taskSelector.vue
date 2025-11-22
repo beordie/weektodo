@@ -9,9 +9,10 @@
     
     <!-- 下拉菜单 -->
     <div v-show="showDropdown" class="dropdown-menu-task-selector">
-      <div v-for="task in taskOptions" :key="task" class="dropdown-item" @click="selectTask(task)">
+      <div v-for="task in taskOptions" :key="task.title" class="dropdown-item" @click="selectTask(task)">
+        <div class="task-color-indicator" :style="{ backgroundColor: task.color || '#2196F3' }"></div>
         <i class="bi bi-tag-fill"></i>
-        <span>{{ task }}</span>
+        <span>{{ task.title }}</span>
       </div>
     </div>
   </div>
@@ -27,13 +28,12 @@ export default {
     }
   },
   computed: {
-    // 从store获取所有任务标题作为选项
+    // 从store获取所有任务作为选项
     taskOptions() {
       const tasks = this.$store.getters.tasks || {};
       return Object.values(tasks)
-        .map(task => task.title)
-        .filter(title => title && title.trim() !== "")
-        .sort();
+        .filter(task => task.title && task.title.trim() !== "")
+        .sort((a, b) => a.title.localeCompare(b.title));
     }
   },
   data() {
@@ -57,9 +57,9 @@ export default {
   },
   methods: {
     selectTask(task) {
-      this.selectedTask = task;
+      this.selectedTask = task.title;
       this.$emit('update:task', this.selectedTask);
-      this.$emit('task-selected', this.selectedTask);
+      this.$emit('task-selected', { task: task.title, color: task.color });
       this.showDropdown = false;
     },
     toggleDropdown() {
@@ -140,5 +140,13 @@ export default {
 .dropdown-item i {
   margin-right: 8px;
   color: #6c757d;
+}
+
+.task-color-indicator {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  margin-right: 8px;
+  border: 1px solid rgba(0,0,0,0.1);
 }
 </style>

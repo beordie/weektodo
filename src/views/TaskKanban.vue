@@ -324,8 +324,11 @@
                 <span class="task-status" :class="task.completed ? 'completed' : 'pending'">
                   {{ task.completed ? '已完成' : '待处理' }}
                 </span>
-                <span v-if="task.taskId && task.taskId !== task.listId" class="task-parent">
-                  父任务: {{ task.taskId }}
+                <span v-if="task.desc && task.desc.trim() !== ''" class="task-parent">
+                  内容: {{ task.desc }}
+                </span>
+                <span v-if="task.subtasks && task.subtasks.length > 0 && task.subtasks.some(subtask => subtask && subtask.trim() !== '')" class="task-subtasks">
+                  子任务: {{ task.subtasks.filter(subtask => subtask && subtask.trim() !== '').join(', ') }}
                 </span>
               </div>
             </div>
@@ -1375,6 +1378,8 @@ export default {
                   alarm: todo.alarm || false, // 兼容checked和completed两种状态字段
                   listId: listId,
                   time: todo.time || {}, // 确保time存在，避免后续操作报错
+                  desc: todo.desc || '', // 确保desc存在，避免后续操作报错
+                  subtasks: todo.subTaskList && Array.isArray(todo.subTaskList) ? todo.subTaskList.map(subTask => subTask.text) : [] // 从subTaskList中提取text字段到subtasks数组
                 });
               }
             }

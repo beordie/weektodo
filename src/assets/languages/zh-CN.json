@@ -25,6 +25,7 @@
     "markAsCompleted": "标记为已完成",
     "total": "总任务数",
     "inProgress": "进行中",
+    "taskColor": "标记",
 
     "newTask": "新建任务",
     "manageTasks": "管理任务",

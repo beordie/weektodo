@@ -466,8 +466,9 @@ export default {
       }
       this.updateTodoWithReorder();
     },
-    changeTask(task) {
+    changeTask({ task, color }) {
       this.todo.task = task;
+      this.todo.color = color;
       this.updateTodo();
     },
     changeAlarm() {
