@@ -130,6 +130,58 @@
         </div>
       </div>
 
+    <!-- 里程碑统计表格 - 单独一行 -->
+    <div class="milestones-section full-width-section">
+      <div class="section-header">
+        <h3>里程碑统计</h3>
+        <div class="milestones-summary">
+          <span class="milestones-count">共 {{ totalMilestonesCount }} 个里程碑</span>
+          <span class="milestones-completion">平均完成率: {{ averageMilestoneCompletionRate }}%</span>
+        </div>
+      </div>
+      <div class="milestones-table-container">
+        <table class="milestones-table">
+          <thead>
+            <tr>
+              <th>里程碑名称</th>
+              <th>总任务数</th>
+              <th>已完成</th>
+              <th>待处理</th>
+              <th>完成率</th>
+              <th>进度</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="milestone in milestoneStats" :key="milestone.name">
+              <td class="milestone-name">{{ milestone.name }}</td>
+              <td class="milestone-total">{{ milestone.totalTasks }}</td>
+              <td class="milestone-completed">{{ milestone.completedTasks }}</td>
+              <td class="milestone-pending">{{ milestone.pendingTasks }}</td>
+              <td class="milestone-rate">{{ milestone.completionRate }}%</td>
+              <td class="milestone-progress">
+                <div class="progress-bar">
+                  <div 
+                    class="progress-fill" 
+                    :class="{
+                      'progress-low': milestone.completionRate < 30,
+                      'progress-medium': milestone.completionRate >= 30 && milestone.completionRate < 70,
+                      'progress-high': milestone.completionRate >= 70
+                    }"
+                    :style="{ width: milestone.completionRate + '%' }"
+                  ></div>
+                </div>
+              </td>
+            </tr>
+            <tr v-if="milestoneStats.length === 0">
+              <td colspan="6" class="no-milestones">
+                暂无里程碑数据
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
     <!-- 统计图表区域 - 响应式布局 -->
     <div class="stats-charts-container">
       <!-- 任务完成趋势 -->
@@ -714,6 +766,7 @@ export default {
         status: 'todo',
         completed: false,
         todos: [],
+        milestones: []
       }
     };
   },
@@ -1105,6 +1158,101 @@ export default {
         // 向上取整到最近的整数
         return Math.ceil(max);
       },
+      // 里程碑相关计算属性
+      // 从任务中提取所有milestones
+      allMilestones() {
+        // 从所有任务中收集milestones
+        const milestonesSet = new Set();
+        
+        // 直接从当前任务中获取milestones
+        console.log("任务：", this.currentTask)
+        if (this.tasks && this.tasks.milestones && Array.isArray(this.tasks.milestones)) {
+          this.tasks.milestones.forEach(milestone => {
+            if (milestone) {
+              // Handle both object format with title and completed properties
+              // and string format for backward compatibility
+              const milestoneTitle = typeof milestone === 'object' && milestone.title 
+                ? milestone.title 
+                : milestone;
+              
+              if (milestoneTitle && typeof milestoneTitle === 'string' && milestoneTitle.trim() !== '') {
+                milestonesSet.add(milestoneTitle.trim());
+              }
+            }
+          });
+        }
+        
+        // 如果当前任务没有milestones或为空，则从所有最近任务中收集
+        if (milestonesSet.size === 0) {
+          this.getRecentTodos().forEach(todo => {
+            if (todo.milestones && Array.isArray(todo.milestones)) {
+              todo.milestones.forEach(milestone => {
+                if (milestone) {
+                  // Handle both object format with title and completed properties
+                  // and string format for backward compatibility
+                  const milestoneTitle = typeof milestone === 'object' && milestone.title 
+                    ? milestone.title 
+                    : milestone;
+                  
+                  if (milestoneTitle && typeof milestoneTitle === 'string' && milestoneTitle.trim() !== '') {
+                    milestonesSet.add(milestoneTitle.trim());
+                  }
+                }
+              });
+            }
+          });
+        }
+        
+        return Array.from(milestonesSet);
+      },
+      // 里程碑完成状态统计
+      milestoneStats() {
+        const stats = [];
+        const recentTodos = this.getRecentTodos(); // 只调用一次
+        
+        this.allMilestones.forEach(milestone => {
+          // 统计包含该里程碑的任务总数
+          const totalTasks = recentTodos.filter(todo => 
+            todo.milestones && Array.isArray(todo.milestones) && 
+            todo.milestones.some(m => 
+              typeof m === 'object' ? m.title === milestone : m === milestone
+            )
+          ).length;
+          
+          // 统计包含该里程碑且已完成的任务数
+          const completedTasks = recentTodos.filter(todo => 
+            todo.completed && 
+            todo.milestones && Array.isArray(todo.milestones) && 
+            todo.milestones.some(m => 
+              typeof m === 'object' ? m.title === milestone : m === milestone
+            )
+          ).length;
+          
+          // 计算完成百分比
+          const completionRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+          
+          stats.push({
+            name: milestone,
+            totalTasks,
+            completedTasks,
+            pendingTasks: totalTasks - completedTasks,
+            completionRate
+          });
+        });
+        
+        return stats;
+      },
+      // 里程碑总数量
+      totalMilestonesCount() {
+        return this.allMilestones.length;
+      },
+      // 平均里程碑完成率
+      averageMilestoneCompletionRate() {
+        if (this.milestoneStats.length === 0) return 0;
+        
+        const totalRate = this.milestoneStats.reduce((sum, stat) => sum + stat.completionRate, 0);
+        return Math.round(totalRate / this.milestoneStats.length);
+      },
       // 生成折线图的坐标点
       timeStatsPoints() {
         const data = this.timeStatsData;
@@ -1339,7 +1487,10 @@ export default {
     getRecentTodos() {
       
       const allTodos = [];
-      this.currentTask = this.tasks;
+      // 只有当tasks不为null时才更新currentTask，避免覆盖默认值
+      if (this.tasks !== null) {
+        this.currentTask = this.tasks;
+      }
       
       // 遍历todoLists对象的所有列表
       Object.entries(this.todoLists).forEach(([listId, todoItems]) => {
@@ -1369,6 +1520,7 @@ export default {
                 : true; // 如果currentTask不存在，返回所有待办项
                 
               if (shouldAddTodo) {
+                
                 allTodos.push({
                   id: `${listId}_todo_${index}`,
                   title: todo.text,
@@ -1379,7 +1531,7 @@ export default {
                   listId: listId,
                   time: todo.time || {}, // 确保time存在，避免后续操作报错
                   desc: todo.desc || '', // 确保desc存在，避免后续操作报错
-                  subtasks: todo.subTaskList && Array.isArray(todo.subTaskList) ? todo.subTaskList.map(subTask => subTask.text) : [] // 从subTaskList中提取text字段到subtasks数组
+                  subtasks: todo.subTaskList && Array.isArray(todo.subTaskList) ? todo.subTaskList.map(subTask => subTask.text) : [], // 从subTaskList中提取text字段到subtasks数组
                 });
               }
             }
@@ -2053,6 +2205,141 @@ export default {
   margin-bottom: 30px;
 }
 
+/* 全宽区域样式 */
+.full-width-section {
+  width: 100%;
+  margin-bottom: 20px;
+}
+
+/* 里程碑统计样式 */
+.milestones-section {
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  margin-bottom: 30px;
+  width: 100%;
+}
+
+/* 确保里程碑统计表不会被压缩 */
+.milestones-table-container {
+  overflow-x: auto;
+  min-width: 600px; /* 设置最小宽度确保表格列不会被过度压缩 */
+}
+
+.milestones-section .section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.milestones-section h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #212529;
+}
+
+.milestones-summary {
+  display: flex;
+  gap: 20px;
+  font-size: 14px;
+  color: #6c757d;
+}
+
+.milestones-summary .milestones-count,
+.milestones-summary .milestones-completion {
+  font-weight: 500;
+}
+
+.milestones-table-container {
+  overflow-x: auto;
+}
+
+.milestones-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.milestones-table th,
+.milestones-table td {
+  padding: 12px 15px;
+  text-align: left;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.milestones-table th {
+  background-color: #f8f9fa;
+  font-weight: 600;
+  color: #495057;
+}
+
+.milestones-table tbody tr:hover {
+  background-color: #f8f9fa;
+}
+
+.milestone-name {
+  font-weight: 500;
+  color: #212529;
+}
+
+.milestone-total,
+.milestone-completed,
+.milestone-pending,
+.milestone-rate {
+  font-weight: 500;
+  text-align: center;
+}
+
+.milestone-completed {
+  color: #28a745;
+}
+
+.milestone-pending {
+  color: #ffc107;
+}
+
+.milestone-progress {
+  padding: 8px 15px;
+}
+
+.progress-bar {
+  height: 8px;
+  background-color: #e9ecef;
+  border-radius: 4px;
+  overflow: hidden;
+  position: relative;
+}
+
+.progress-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+.progress-low {
+  background-color: #dc3545;
+}
+
+.progress-medium {
+  background-color: #ffc107;
+}
+
+.progress-high {
+  background-color: #28a745;
+}
+
+.no-milestones {
+  text-align: center !important;
+  color: #6c757d;
+  font-style: italic;
+  padding: 30px !important;
+}
+
 /* 数据值标签样式 */
 .data-value-label {
   font-size: 12px;
@@ -2647,6 +2934,11 @@ label {
 
 .dark-theme .form-actions {
   border-top-color: #30363d;
+}
+
+/* 深色主题 - 全宽区域 */
+.dark-theme .full-width-section {
+  width: 100%;
 }
 
 /* 深色主题 - 统计卡片 */

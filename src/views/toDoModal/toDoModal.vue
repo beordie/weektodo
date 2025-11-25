@@ -49,6 +49,7 @@
           </div>
           <div class="d-flex ms-auto align-items-center">
             <task-selector :task="todo.task" @task-selected="changeTask"></task-selector>
+            <milestone-selector :task="todo.task" :milestone="todo.milestone" @milestone-selected="changeMilestone"></milestone-selector>
             <time-picker :time="todo.time" @time-selected="changeTime"></time-picker>
             <i :class="{ 'bi-bell': !todo.alarm, 'bi-bell-fill': todo.alarm }" class="header-menu-icons"
               @click="changeAlarm" :title="$t('todoDetails.alarm')"></i>
@@ -171,6 +172,7 @@ import ClickHandler from "@manuelernestog/click-handler";
 import tasksHelper from "../../helpers/tasksHelper";
 import descriptionTextArea from './descriptionTextArea.vue'
 import taskSelector from './taskSelector.vue'
+import milestoneSelector from './milestoneSelector.vue'
 
 export default {
   name: "toDoModal",
@@ -186,7 +188,9 @@ export default {
         desc: "",
         subTaskList: [],
         alarm: false,
-        task: ""
+        task: "",
+        milestone: "",
+        milestones: []
       },
       todoList: null,
       index: 0,
@@ -211,7 +215,8 @@ export default {
     repeatingEvent,
     comfirmModal,
     descriptionTextArea,
-    taskSelector
+    taskSelector,
+    milestoneSelector
   },
   methods: {
     removeSubTask: function (index) {
@@ -417,6 +422,8 @@ export default {
         time: this.todo.time,
         alarm: this.todo.alarm,
         task: this.todo.task,
+        milestone: this.todo.milestone,
+        milestones: [...(this.todo.milestones || [])],
         repeatingEvent: null,
       };
       this.$store.commit("addTodo", newTodo);
@@ -440,6 +447,9 @@ export default {
       text += this.todo.text;
       if (this.todo.task) {
         text += " [" + this.todo.task + "]";
+        if (this.todo.milestone) {
+          text += " (" + this.todo.milestone + ")";
+        }
       }
       if (this.todo.desc != "") {
         text += "\n\n";
@@ -469,6 +479,30 @@ export default {
     changeTask({ task, color }) {
       this.todo.task = task;
       this.todo.color = color;
+      // 当更换任务时，清空当前里程碑
+      if (this.todo.milestone) {
+        this.todo.milestone = "";
+      }
+      this.updateTodo();
+    },
+    changeMilestone({ milestone }) {
+      this.todo.milestone = milestone;
+      // 确保milestones数组存在且为数组类型
+      if (!Array.isArray(this.todo.milestones)) {
+        this.todo.milestones = [];
+      }
+      // 更新milestones数组，包含当前选择的里程碑（如果有）
+      if (milestone) {
+        // 检查是否已存在
+        const milestoneExists = this.todo.milestones.some(m => 
+          typeof m === 'object' ? m.title === milestone : m === milestone
+        );
+        if (!milestoneExists) {
+          this.todo.milestones.push(milestone);
+        }
+      } else {
+        // 如果清空里程碑，保持milestones数组不变，只更新milestone字段
+      }
       this.updateTodo();
     },
     changeAlarm() {

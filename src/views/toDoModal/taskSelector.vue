@@ -93,6 +93,8 @@ export default {
   background-color: transparent;
   color: #495057;
   width: auto;
+  border-radius: 4px;
+  transition: background-color 0.2s;
 }
 
 .task-selector-trigger:hover {
@@ -105,6 +107,11 @@ export default {
   margin-right: 4px;
   font-size: 14px;
   color: #495057;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: inline-block;
 }
 
 .dropdown-menu-task-selector {

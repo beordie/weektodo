@@ -26,6 +26,12 @@
     "total": "总任务数",
     "inProgress": "进行中",
     "taskColor": "标记",
+    "milestones": "里程碑",
+    "addMilestone": "添加里程碑",
+    "milestoneTitle": "里程碑名称",
+    "milestonePlaceholder": "请输入里程碑名称",
+    "milestonesCompleted": "已完成",
+    "clearMilestone": "清除里程碑",
 
     "newTask": "新建任务",
     "manageTasks": "管理任务",

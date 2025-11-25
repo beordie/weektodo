@@ -206,6 +206,20 @@
               {{ getCompletedTodosCount(task) }}/{{ task.todos.length }} {{ $t('taskManagement.todosCompleted') }}
             </div>
           </div>
+          
+          <!-- Milestone 进度 -->
+          <div class="milestone-progress" v-if="task.milestones && task.milestones.length > 0">
+            <div class="progress-info">
+              <span class="progress-text">{{ getMilestoneProgress(task) }}%</span>
+              <span class="progress-label">{{ $t('taskManagement.milestones') }}</span>
+            </div>
+            <div class="progress-bar">
+              <div class="progress-fill milestone-progress-fill" :style="{ width: getMilestoneProgress(task) + '%' }"></div>
+            </div>
+            <div class="milestones-count">
+              {{ getCompletedMilestonesCount(task) }}/{{ task.milestones.length }} {{ $t('taskManagement.milestonesCompleted') }}
+            </div>
+          </div>
         </div>
       </div>
       
@@ -328,6 +342,44 @@
               </div>
             </div>
             <div class="form-group">
+              <label>{{ $t('taskManagement.milestones') }}</label>
+              <div class="milestones-container">
+                <div 
+                  v-for="(milestone, index) in currentTask.milestones" 
+                  :key="index"
+                  class="milestone-item"
+                >
+                  <div class="milestone-content">
+                    <input 
+                      type="checkbox" 
+                      v-model="milestone.completed"
+                      class="milestone-checkbox"
+                    >
+                    <input 
+                      type="text" 
+                      v-model="milestone.title"
+                      class="milestone-input"
+                      :placeholder="$t('taskManagement.milestonePlaceholder')"
+                    >
+                  </div>
+                  <button 
+                    type="button"
+                    class="btn btn-danger btn-sm milestone-delete"
+                    @click="removeMilestone(index)"
+                  >
+                    <i class="bi-trash"></i>
+                  </button>
+                </div>
+                <button 
+                  type="button"
+                  class="btn btn-secondary btn-sm milestone-add"
+                  @click="addMilestone"
+                >
+                  <i class="bi-plus"></i> {{ $t('taskManagement.addMilestone') }}
+                </button>
+              </div>
+            </div>
+            <div class="form-group">
               <label class="checkbox-label">
                 <input 
                   v-model="currentTask.completed" 
@@ -404,6 +456,109 @@
       height: 28px;
     }
   }
+  /* Milestone 相关样式 */
+  .milestones-container {
+    margin-top: 10px;
+  }
+  
+  .milestone-item {
+    display: flex;
+    align-items: center;
+    margin-bottom: 8px;
+    padding: 8px;
+    background-color: #f8f9fa;
+    border-radius: 4px;
+    border: 1px solid #e9ecef;
+  }
+  
+  .milestone-content {
+    display: flex;
+    align-items: center;
+    flex: 1;
+    gap: 8px;
+  }
+  
+  .milestone-checkbox {
+    margin: 0;
+  }
+  
+  .milestone-input {
+    flex: 1;
+    padding: 6px 10px;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    font-size: 14px;
+    background-color: white;
+  }
+  
+  .milestone-input:focus {
+    outline: none;
+    border-color: #2196F3;
+    box-shadow: 0 0 0 2px rgba(33, 150, 243, 0.25);
+  }
+  
+  .milestone-delete {
+    padding: 4px 8px;
+    margin-left: 8px;
+  }
+  
+  .milestone-add {
+    width: 100%;
+    margin-top: 8px;
+    padding: 8px 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+  }
+  
+  /* 任务卡片中的 Milestone 进度样式 */
+  .milestone-progress {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid #e9ecef;
+  }
+  
+  .milestone-progress .progress-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+  }
+  
+  .milestone-progress .progress-label {
+    font-size: 13px;
+    color: #6c757d;
+    font-weight: 500;
+  }
+  
+  .milestone-progress-fill {
+    background-color: #9C27B0;
+  }
+  
+  .milestones-count {
+    font-size: 12px;
+    color: #6c757d;
+    margin-top: 4px;
+    text-align: right;
+  }
+  
+  @media (max-width: 768px) {
+    .milestone-item {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 8px;
+    }
+    
+    .milestone-delete {
+      margin-left: 0;
+      width: 100%;
+    }
+    
+    .milestone-content {
+      flex-direction: row;
+    }
+  }
   </style>
 
 <script>
@@ -422,16 +577,17 @@ export default {
       sortOrder: 'asc',
       viewMode: 'card',
       currentTask: {
-        title: '',
-        description: '',
-        startDate: '',
-        endDate: '',
-        category: '',
-        priority: 'medium',
-        completed: false,
-        todos: [],
-        color: '#2196F3',
-      },
+      title: '',
+      description: '',
+      startDate: '',
+      endDate: '',
+      category: '',
+      priority: 'medium',
+      completed: false,
+      todos: [],
+      color: '#2196F3',
+      milestones: []
+    },
     };
   },
   computed: {
@@ -495,20 +651,44 @@ export default {
     this.$store.dispatch('loadTaskCategories');
   },
   methods: {
+    // 添加milestone
+    addMilestone() {
+      // 确保milestones是数组，在Vue 3中直接赋值即可保持响应式
+      if (!this.currentTask.milestones) {
+        this.currentTask.milestones = [];
+      }
+      
+      // 添加新的里程碑对象
+      this.currentTask.milestones.push({
+        title: '',
+        completed: false
+      });
+    },
+    
+    // 删除milestone
+    removeMilestone(index) {
+      // 确保milestones数组存在
+      if (!this.currentTask.milestones) return;
+      
+      // 在Vue 3中，splice操作会被正确检测为响应式变更
+      this.currentTask.milestones.splice(index, 1);
+    },
+    
     // 打开创建任务模态框
     openCreateTaskModal() {
       this.editingTask = null;
       this.currentTask = {
-        title: '',
-        description: '',
-        startDate: moment().format('YYYY-MM-DD'),
-        endDate: moment().add(1, 'week').format('YYYY-MM-DD'),
-        category: '',
-        priority: 'medium',
-        completed: false,
-        todos: [],
-        color: '#2196F3',
-      };
+      title: '',
+      description: '',
+      startDate: moment().format('YYYY-MM-DD'),
+      endDate: moment().add(1, 'week').format('YYYY-MM-DD'),
+      category: '',
+      priority: 'medium',
+      completed: false,
+      todos: [],
+      color: '#2196F3',
+      milestones: []
+    };
       this.showModal = true;
     },
     
@@ -529,20 +709,31 @@ export default {
       
       if (this.editingTask) {
         // 更新现有任务
+        // 确保milestones数组存在，即使为空
+        const milestones = Array.isArray(this.currentTask.milestones) ? this.currentTask.milestones : [];
+        const updates = {
+          ...this.currentTask,
+          updatedAt: new Date().toISOString(),
+          milestones: milestones
+        };
+        
         this.$store.commit('updateTask', {
           taskId: this.editingTask,
-          updates: this.currentTask,
+          updates: updates,
         });
-        taskRepository.update(this.editingTask, this.currentTask);
+        taskRepository.update(this.editingTask, updates);
         // 由于notifications模块没有showToast方法，暂时省略通知
       } else {
         // 创建新任务
         const taskId = moment().format('YYYYMMDDTHHmmssS');
+        // 确保milestones数组存在，即使为空
+        const milestones = Array.isArray(this.currentTask.milestones) ? this.currentTask.milestones : [];
         const newTask = {
           ...this.currentTask,
           id: taskId,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
+          milestones: milestones
         };
         
         this.$store.commit('addTask', newTask);
@@ -679,6 +870,19 @@ export default {
       });
       
       return completedCount;
+    },
+    
+    // 获取milestone进度
+    getMilestoneProgress(task) {
+      if (!task.milestones || task.milestones.length === 0) return 0;
+      const completedMilestones = task.milestones.filter(milestone => milestone && milestone.completed).length;
+      return Math.round((completedMilestones / task.milestones.length) * 100);
+    },
+    
+    // 获取已完成的milestones数量
+    getCompletedMilestonesCount(task) {
+      if (!task.milestones) return 0;
+      return task.milestones.filter(milestone => milestone && milestone.completed).length;
     },
     
     // 获取分类名称
