@@ -189,8 +189,7 @@ export default {
         subTaskList: [],
         alarm: false,
         task: "",
-        milestone: "",
-        milestones: []
+        milestone: "" // 只使用单个milestone字段
       },
       todoList: null,
       index: 0,
@@ -423,7 +422,6 @@ export default {
         alarm: this.todo.alarm,
         task: this.todo.task,
         milestone: this.todo.milestone,
-        milestones: [...(this.todo.milestones || [])],
         repeatingEvent: null,
       };
       this.$store.commit("addTodo", newTodo);
@@ -486,23 +484,8 @@ export default {
       this.updateTodo();
     },
     changeMilestone({ milestone }) {
+      // 只操作单个milestone字段，不再维护milestones数组
       this.todo.milestone = milestone;
-      // 确保milestones数组存在且为数组类型
-      if (!Array.isArray(this.todo.milestones)) {
-        this.todo.milestones = [];
-      }
-      // 更新milestones数组，包含当前选择的里程碑（如果有）
-      if (milestone) {
-        // 检查是否已存在
-        const milestoneExists = this.todo.milestones.some(m => 
-          typeof m === 'object' ? m.title === milestone : m === milestone
-        );
-        if (!milestoneExists) {
-          this.todo.milestones.push(milestone);
-        }
-      } else {
-        // 如果清空里程碑，保持milestones数组不变，只更新milestone字段
-      }
       this.updateTodo();
     },
     changeAlarm() {

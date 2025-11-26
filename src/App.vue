@@ -238,19 +238,21 @@ export default {
     this.$store.commit("loadConfig", configRepository.load());
     this.$i18n.locale = this.$store.getters.config.language;
 
+    // 首先加载所有重复事件
     this.$store.dispatch("loadAllRepeatingEvent").then(
-      function () {
-        let totalDaysCount = parseInt(this.$store.getters.config.columns) + 2;
-        let totalCustomListCount = this.$store.getters.cTodoListIds.length;
-        this.initialListToLoad = totalDaysCount + totalCustomListCount;
-        this.deleteOldRepeatingEvents();
-        this.selected_date = moment().format("YYYYMMDD");
-        this.$nextTick(() => {
-          this.weekResetScroll();
-        });
-        this.$store.commit("loadRepeatingEventDateCache", this.$store.getters.repeatingEventList);
-      }.bind(this)
-    );
+        function () {
+          // 按需加载逻辑，不再加载所有todo列表数据
+          let totalDaysCount = parseInt(this.$store.getters.config.columns) + 2;
+          let totalCustomListCount = this.$store.getters.cTodoListIds.length;
+          this.initialListToLoad = totalDaysCount + totalCustomListCount;
+          this.deleteOldRepeatingEvents();
+          this.selected_date = moment().format("YYYYMMDD");
+          this.$nextTick(() => {
+            this.weekResetScroll();
+          });
+          this.$store.commit("loadRepeatingEventDateCache", this.$store.getters.repeatingEventList);
+        }.bind(this)
+      );
   },
   mounted() {
     this.$refs.weekListContainer.scrollLeft = this.todoListWidth();

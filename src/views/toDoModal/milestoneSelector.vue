@@ -47,6 +47,7 @@ export default {
       const currentTask = Object.values(tasks).find(t => t.title === this.selectedTask);
       
       if (currentTask && currentTask.milestones && Array.isArray(currentTask.milestones)) {
+        // 保持兼容，仍然使用任务层面的milestones数组
         return currentTask.milestones;
       }
       

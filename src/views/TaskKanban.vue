@@ -745,6 +745,13 @@ export default {
       }).catch(error => {
         console.error('加载任务分类失败:', error);
       });
+      
+      // 加载所有待办事项数据（仅在看板页面加载全部数据）
+      this.$store.dispatch('loadAllTodoLists').then(() => {
+        console.log('所有待办事项数据已加载');
+      }).catch(error => {
+        console.error('加载所有待办事项数据失败:', error);
+      });
     },
   data() {
     return {
@@ -1164,7 +1171,7 @@ export default {
         // 从所有任务中收集milestones
         const milestonesSet = new Set();
         
-        // 直接从当前任务中获取milestones
+        // 直接从当前任务中获取milestones（任务层面使用milestones数组）
         console.log("任务：", this.currentTask)
         if (this.tasks && this.tasks.milestones && Array.isArray(this.tasks.milestones)) {
           this.tasks.milestones.forEach(milestone => {
@@ -1182,23 +1189,19 @@ export default {
           });
         }
         
-        // 如果当前任务没有milestones或为空，则从所有最近任务中收集
+        // 如果当前任务没有milestones或为空，则从所有最近任务中收集（todo层面使用milestone单个字段）
         if (milestonesSet.size === 0) {
           this.getRecentTodos().forEach(todo => {
-            if (todo.milestones && Array.isArray(todo.milestones)) {
-              todo.milestones.forEach(milestone => {
-                if (milestone) {
-                  // Handle both object format with title and completed properties
-                  // and string format for backward compatibility
-                  const milestoneTitle = typeof milestone === 'object' && milestone.title 
-                    ? milestone.title 
-                    : milestone;
-                  
-                  if (milestoneTitle && typeof milestoneTitle === 'string' && milestoneTitle.trim() !== '') {
-                    milestonesSet.add(milestoneTitle.trim());
-                  }
-                }
-              });
+            if (todo.milestone) {
+              // Handle both object format with title and completed properties
+              // and string format for backward compatibility
+              const milestoneTitle = typeof todo.milestone === 'object' && todo.milestone.title 
+                ? todo.milestone.title 
+                : todo.milestone;
+              
+              if (milestoneTitle && typeof milestoneTitle === 'string' && milestoneTitle.trim() !== '') {
+                milestonesSet.add(milestoneTitle.trim());
+              }
             }
           });
         }
@@ -1211,22 +1214,21 @@ export default {
         const recentTodos = this.getRecentTodos(); // 只调用一次
         
         this.allMilestones.forEach(milestone => {
-          // 统计包含该里程碑的任务总数
-          const totalTasks = recentTodos.filter(todo => 
-            todo.milestones && Array.isArray(todo.milestones) && 
-            todo.milestones.some(m => 
-              typeof m === 'object' ? m.title === milestone : m === milestone
-            )
-          ).length;
+          // 统计包含该里程碑的任务总数（使用todo.milestone单个字段）
+          const totalTasks = recentTodos.filter(todo => {
+            if (!todo.milestone) return false;
+            // 支持对象和字符串格式的milestone
+            const todoMilestone = typeof todo.milestone === 'object' ? todo.milestone.title : todo.milestone;
+            return todoMilestone === milestone;
+          }).length;
           
-          // 统计包含该里程碑且已完成的任务数
-          const completedTasks = recentTodos.filter(todo => 
-            todo.completed && 
-            todo.milestones && Array.isArray(todo.milestones) && 
-            todo.milestones.some(m => 
-              typeof m === 'object' ? m.title === milestone : m === milestone
-            )
-          ).length;
+          // 统计包含该里程碑且已完成的任务数（使用todo.milestone单个字段）
+          const completedTasks = recentTodos.filter(todo => {
+            if (!todo.completed || !todo.milestone) return false;
+            // 支持对象和字符串格式的milestone
+            const todoMilestone = typeof todo.milestone === 'object' ? todo.milestone.title : todo.milestone;
+            return todoMilestone === milestone;
+          }).length;
           
           // 计算完成百分比
           const completionRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
@@ -1532,6 +1534,7 @@ export default {
                   time: todo.time || {}, // 确保time存在，避免后续操作报错
                   desc: todo.desc || '', // 确保desc存在，避免后续操作报错
                   subtasks: todo.subTaskList && Array.isArray(todo.subTaskList) ? todo.subTaskList.map(subTask => subTask.text) : [], // 从subTaskList中提取text字段到subtasks数组
+                  milestone: todo.milestone || '', // 添加milestone字段，从原始todo数据中获取
                 });
               }
             }

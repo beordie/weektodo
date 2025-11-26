@@ -98,6 +98,38 @@ const actions = {
       };
     });
   },
+  
+  // 加载所有todo列表数据
+  loadAllTodoLists({ commit }) {
+    return new Promise((resolve) => {
+      let db_req = dbRepository.open();
+      db_req.onsuccess = function (event) {
+        let db = event.target.result;
+        var cursor_req = dbRepository.selectAll(db, "todo_lists");
+        let allLists = {};
+        
+        cursor_req.onsuccess = function(event) {
+          let cursor = event.target.result;
+          if (cursor) {
+            // 存储每个列表的数据
+            allLists[cursor.key] = cursor.value;
+            // 提交到state
+            commit("loadTodoLists", { todoListId: cursor.key, todoList: cursor.value });
+            cursor.continue();
+          } else {
+            // 遍历完成
+            console.log('所有todo列表已加载完成');
+            resolve(allLists);
+          }
+        };
+        
+        cursor_req.onerror = function(event) {
+          console.error('加载所有todo列表失败:', event.target.error);
+          resolve({});
+        };
+      };
+    });
+  },
 };
 
 export default {
