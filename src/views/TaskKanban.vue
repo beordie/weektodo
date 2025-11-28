@@ -351,7 +351,7 @@
       <div class="task-list">
         <template v-if="filteredTasks && filteredTasks.length > 0">
           <div 
-            v-for="(task, index) in getRecentTodos()" 
+            v-for="(task, index) in getRecentTodosLimited()" 
             :key="task.id || index"
             class="task-item expanded"
           >
@@ -1542,10 +1542,15 @@ export default {
         }
       });
       
-      // 按创建时间排序并返回最近的20个（为统计提供更多数据）
+      // 按创建时间排序并返回所有任务
       return allTodos
-        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-        .slice(0, 20);
+        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    },
+    
+    // 获取最近待办项（限制为10条）
+    getRecentTodosLimited() {
+      // 调用getRecentTodos()并限制只返回前10条任务
+      return this.getRecentTodos().slice(0, 10);
     },
     
     // 获取最近一年的日期范围（52周，每周7天）

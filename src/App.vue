@@ -686,6 +686,7 @@ body {
   transition: height 0.15s ease-out 0s;
   margin-top: 20px;
   margin-bottom: 25px;
+  margin-left: 52px; // 避免被侧边栏遮盖
   // margin-bottom: 5px;
 }
 
