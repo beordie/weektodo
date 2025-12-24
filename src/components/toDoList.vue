@@ -51,7 +51,7 @@ export default {
   },
   data() {
     return {
-      newToDo: { text: "", checked: false },
+      newToDo: { text: "", checked: 0, alarm: 0 },
       fakeItemCounts: 6,
       fakeItemsDragHover: false,
       loading: false,
@@ -83,7 +83,7 @@ export default {
       if (this.newToDo.text != "") {
         var newTodo = {
           text: this.newToDo.text,
-          checked: false,
+          checked: 0,
           listId: this.id,
           desc: "",
           subTaskList: [],
@@ -91,12 +91,13 @@ export default {
           priority: 0,
           tags: [],
           time: null,
-          alarm: false,
+          alarm: 0,
           repeatingEvent: null,
         };
         this.$store.commit("addTodo", newTodo);
         this.updateTodoList(this.id, this.$store.getters.todoLists[this.id]);
         this.newToDo.text = "";
+
       }
     },
     cancelAdd: function () {
@@ -107,10 +108,9 @@ export default {
     },
     onDrop: function (event, list, new_index) {
       let toDo = JSON.parse(event.dataTransfer.getData("item"));
-      let index = event.dataTransfer.getData("index");
       this.$store.commit("removeTodo", {
         toDoListId: toDo.listId,
-        index: index,
+        todoId: toDo.id,
       });
       this.updateTodoList(toDo.listId, this.$store.getters.todoLists[toDo.listId]);
       if (toDo.listId != list) toDo.repeatingEvent = null;
@@ -128,8 +128,7 @@ export default {
     },
     onDropAtEnd: function (event, list) {
       let toDo = JSON.parse(event.dataTransfer.getData("item"));
-      let index = event.dataTransfer.getData("index");
-      this.$store.commit("removeTodo", { toDoListId: toDo.listId, index: index, });
+      this.$store.commit("removeTodo", { toDoListId: toDo.listId, todoId: toDo.id });
       this.updateTodoList(toDo.listId, this.$store.getters.todoLists[toDo.listId]);
       if (toDo.listId != list) toDo.repeatingEvent = null;
       toDo.listId = list;

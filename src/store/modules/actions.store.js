@@ -20,6 +20,7 @@ const mutations = {
         state.actions.cListToRmv = obj;
     },
     actionsSelectedTodoIdUpdate(state, obj) {
+        console.log("actionsSelectedTodoIdUpdate:", obj.toDo);
         state.actions.selectedTodo = obj;
     },
 }

@@ -359,7 +359,7 @@
               type="checkbox" 
               :id="`recent-task-${index}`" 
               class="task-checkbox"
-              :checked="task.completed || false"
+              :checked="task.completed === 1"
               disabled
             >
             <div class="task-content">
@@ -720,6 +720,7 @@
 
 <script>
 import moment from 'moment';
+import configAPI from '../helpers/api/configAPI';
 
 export default {
   name: 'TaskKanban',
@@ -739,12 +740,8 @@ export default {
         console.error('加载任务数据失败:', error);
       });
       
-      // 加载任务分类
-      this.$store.dispatch('loadTaskCategories').then(() => {
-        console.log('任务分类已加载');
-      }).catch(error => {
-        console.error('加载任务分类失败:', error);
-      });
+      // 从后端API获取分类数据
+      this.loadCategoriesFromAPI();
       
       // 加载所有待办事项数据（仅在看板页面加载全部数据）
       this.$store.dispatch('loadAllTodoLists').then(() => {
@@ -774,7 +771,8 @@ export default {
         completed: false,
         todos: [],
         milestones: []
-      }
+      },
+      localCategories: [] // 本地存储API返回的分类数据
     };
   },
   computed: {
@@ -790,7 +788,15 @@ export default {
         return null;
       },
       taskCategories() {
-        return this.$store.getters.taskCategories;
+        // 调试日志：检查localCategories数据
+        console.log('🔍 taskCategories计算属性调用:');
+        console.log('  localCategories:', this.localCategories);
+        console.log('  localCategories.length:', this.localCategories.length);
+        // 只使用本地API获取的分类数据，不再从store获取
+        // 如果localCategories为空，返回空数组
+        const result = this.localCategories.length > 0 ? this.localCategories : [];
+        console.log('  返回的分类数据:', result);
+        return result;
       },
       // 计算所有已完成任务的总时间（小时）
       completedTasksTotalHours() {
@@ -1447,6 +1453,38 @@ export default {
     }
   },
   methods: {
+    // 从API加载分类数据
+    loadCategoriesFromAPI() {
+      console.log('🔍 开始从API加载分类数据');
+      configAPI.getCategories()
+        .then(response => {
+          console.log('✅ 成功获取分类数据:', response);
+          if (response && response.categories) {
+            // 直接将获取到的分类数据保存到本地变量
+            this.localCategories = response.categories;
+            console.log('任务分类已从API加载到本地:', this.localCategories);
+            // 手动触发视图更新
+            this.$forceUpdate();
+            console.log('视图已强制更新');
+          } else {
+            console.warn('⚠️ API返回的数据格式不正确，没有categories字段');
+          }
+        })
+        .catch(error => {
+          console.error('❌ Failed to load categories from API:', error);
+          // 如果API调用失败，直接提供默认分类数据，不再从store获取
+          console.log('⚠️ API调用失败，使用默认分类数据');
+          this.localCategories = [
+            { id: 'work', name: this.$t('taskManagement.work'), color: '#007bff' },
+            { id: 'personal', name: this.$t('taskManagement.personal'), color: '#28a745' },
+            { id: 'health', name: this.$t('taskManagement.health'), color: '#dc3545' },
+            { id: 'shopping', name: this.$t('taskManagement.shopping'), color: '#ffc107' },
+            { id: 'other', name: this.$t('taskManagement.other'), color: '#6c757d' }
+          ];
+          // 手动触发视图更新
+          this.$forceUpdate();
+        });
+    },
     // 解析任务的时间信息并格式化为显示字符串
     formatTaskTime(task) {
       // 检查任务是否有有效的时间信息
@@ -1528,7 +1566,7 @@ export default {
                   title: todo.text,
                   taskId: itemTaskId,
                   createdAt: new Date(timestamp).toISOString(),
-                  completed: todo.checked || false,
+                  completed: todo.checked === 1 ? 1 : 0,
                   alarm: todo.alarm || false, // 兼容checked和completed两种状态字段
                   listId: listId,
                   time: todo.time || {}, // 确保time存在，避免后续操作报错
@@ -1951,7 +1989,7 @@ export default {
           );
           
           // 如果找到且已完成，增加计数
-          if (matchedTodo && matchedTodo.checked) {
+          if (matchedTodo && matchedTodo.checked === 1) {
             completedCount++;
           }
         });

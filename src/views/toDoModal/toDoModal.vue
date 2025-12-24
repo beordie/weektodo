@@ -48,8 +48,8 @@
             </div>
           </div>
           <div class="d-flex ms-auto align-items-center">
-            <task-selector :task="todo.task" @task-selected="changeTask"></task-selector>
-            <milestone-selector :task="todo.task" :milestone="todo.milestone" @milestone-selected="changeMilestone"></milestone-selector>
+            <task-selector :task-id="todo.taskId" @task-selected="changeTask"></task-selector>
+            <milestone-selector :task-id="todo.taskId" :milestone-id="todo.milestoneId" @milestone-selected="changeMilestone"></milestone-selector>
             <time-picker :time="todo.time" @time-selected="changeTime"></time-picker>
             <i :class="{ 'bi-bell': !todo.alarm, 'bi-bell-fill': todo.alarm }" class="header-menu-icons"
               @click="changeAlarm" :title="$t('todoDetails.alarm')"></i>
@@ -93,8 +93,9 @@
         </div>
         <div class="modal-body">
           <div class="form-check">
-            <input class="form-check-input" type="checkbox" value="" id="todo-header" v-model="todo.checked"
-              @change="checkTodoClickhandler(false)" />
+            <input class="form-check-input" type="checkbox" value="" id="todo-header"
+              :checked="todo.checked === 1"
+              @change="toggleTodoCheck" />
             <div class="title-container">
               <label v-show="!editingTitle" class="form-check-label todo-title" for="todo-header"
                 :class="{ 'completed-task': todo.checked }" @dblclick="editTitle">
@@ -106,18 +107,19 @@
               </label>
               <input v-show="editingTitle" class="todo-title-input" type="text" v-model="todo.text" ref="titleInput"
                 :placeholder="$t('todoDetails.taskTitle')" @blur="doneEditTitle()" @keyup.enter="doneEditTitle()" />
-              <description-text-area :todoDesc="todo.desc"
+              <description-text-area :todoDesc="todo.description"
                 @updated-description="changeDescription"></description-text-area>
             </div>
           </div>
           <div class="mt-3"></div>
           <div class="horizontal-divider mb-0 mt-3"></div>
           <ul class="sub-tasks">
-            <li v-for="(subTask, index) in todo.subTaskList" :key="index" class="sub-task">
+            <li v-for="(subTask, index) in todo.subTodos" :key="index" class="sub-task">
               <div v-show="!subTask.editing" draggable="true" @dragstart="startDrag($event, index)" @dragover.prevent>
                 <div class="d-flex flex-row align-items-center" :class="{ checked: subTask.checked }">
-                  <input class="form-check-input flex-grow-1 mx-3 mt-0" type="checkbox" v-model="subTask.checked"
-                    :id="'sub-task-' + index" @change="changeSubTaskClickhandler(index)" />
+                  <input class="form-check-input flex-grow-1 mx-3 mt-0" type="checkbox"
+                    :checked="subTask.checked === 1"
+                    :id="'sub-task-' + index" @change="toggleSubTaskCheck(index)" />
                   <label class="form-check-label" :for="'sub-task-' + index" @dragenter.self="onDragenter($event)"
                     @dragleave.self="onDragleave($event)" @drop="onDrop($event, index)" @dragover.prevent>
                     <span v-html="linkifyText(subTask.text)"></span>
@@ -173,6 +175,7 @@ import tasksHelper from "../../helpers/tasksHelper";
 import descriptionTextArea from './descriptionTextArea.vue'
 import taskSelector from './taskSelector.vue'
 import milestoneSelector from './milestoneSelector.vue'
+import Todo from "../../models/todoModel";
 
 export default {
   name: "toDoModal",
@@ -184,16 +187,18 @@ export default {
       cListOptions: [],
       todo: {
         text: "",
-        checked: false,
+        checked: 0,
         desc: "",
-        subTaskList: [],
-        alarm: false,
+        subTodos: [],
+        alarm: 0,
         task: "",
-        milestone: "" // 只使用单个milestone字段
+        taskId: "",
+        milestone: "", // 只使用单个milestone字段
+        milestoneId: ""
       },
       todoList: null,
       index: 0,
-      newSubTask: { text: "", checked: false, editing: false },
+      newSubTask: { text: "", checked: 0, editing: 0 },
       tempTitle: "",
       tempSubTask: "",
       editingTitle: false,
@@ -219,19 +224,20 @@ export default {
   },
   methods: {
     removeSubTask: function (index) {
-      this.todo.subTaskList.splice(index, 1);
+      this.todo.subTodos.splice(index, 1);
       this.updateTodo();
     },
     addSubTask: function () {
       if (this.newSubTask.text != "") {
         var newTodo = {
           text: this.newSubTask.text,
-          checked: false,
-          editing: false,
+          checked: 0,
+          editing: 0,
         };
-        this.todo.subTaskList.push(newTodo);
+        this.todo.subTodos.push(newTodo);
         this.newSubTask.text = "";
       }
+      console.log("this.todo.subTodos:", this.todo.subTodos);
       this.updateTodo();
     },
     cancelAddSubTask: function () {
@@ -239,19 +245,19 @@ export default {
       this.$refs["newSubTask"].blur();
     },
     editSubTask: function (index) {
-      this.todo.subTaskList[index].editing = true;
+      this.todo.subTodos[index].editing = true;
       this.$nextTick(function () {
         this.$refs["subTaskEdit" + index][0].focus();
         this.$refs["subTaskEdit" + index][0].select();
-        this.tempSubTask = this.todo.subTaskList[index].text;
+        this.tempSubTask = this.todo.subTodos[index].text;
       });
     },
     doneEditSubTask: function (index) {
-      this.todo.subTaskList[index].editing = false;
+      this.todo.subTodos[index].editing = false;
       this.updateTodo();
     },
     cancelEditSubTask: function (index) {
-      this.todo.subTaskList[index].text = this.tempSubTask;
+      this.todo.subTodos[index].text = this.tempSubTask;
       this.$refs["subTaskEdit" + index].blur();
     },
     editTitle: function () {
@@ -281,19 +287,31 @@ export default {
     },
     onDrop: function (event, to_index) {
       let from_index = event.dataTransfer.getData("index");
-      let sub_task = this.todo.subTaskList.splice(parseInt(from_index), 1)[0];
-      this.todo.subTaskList.splice(to_index, 0, sub_task);
+      let sub_task = this.todo.subTodos.splice(parseInt(from_index), 1)[0];
+      this.todo.subTodos.splice(to_index, 0, sub_task);
       event.target.parentElement.classList.remove("drag-hover");
       this.updateTodo();
     },
     showCalendar: function () {
       document.getElementById("todo-date-picker-input").focus();
     },
+    toggleTodoCheck: function () {
+      // 切换checked状态（0表示false，1表示true）
+      this.todo.checked = this.todo.checked === 1 ? 0 : 1;
+      
+      // 调用store action切换后端状态
+      if (this.todo.id) {
+        this.$store.commit("toggleTodo", {
+          todoId: this.todo.id,
+          toDoListId: this.todo.listId
+        });
+      }
+    },
     checkTodoClickhandler: function (resetRepeatinEvent = true) {
       this.clickhandler.handle(function () { this.checkTodo(resetRepeatinEvent) }.bind(this), function () { })
     },
     checkTodo: function (resetRepeatinEvent = true) {
-      if (this.todo.checked) {
+      if (this.todo.checked === 1) {
         if (this.$store.getters.config.moveCompletedTaskToBottom) {
           this.$store.commit("moveTodoToEnd", { toDoListId: this.todo.listId, index: this.index });
         }
@@ -321,6 +339,16 @@ export default {
     updateTodoList: function (todoListId, TodoList) {
       notifications.refreshDayNotifications(this, todoListId);
       toDoListRepository.update(todoListId, TodoList);
+      
+      // 更新当前todo到store，触发API调用
+      if (this.todo.id) {
+        // 使用Todo模型标准化数据结构
+        const todoData = Todo.fromJson(this.todo);
+        this.$store.commit("updateTodo", {
+          todoId: todoData.id,
+          task: todoData.toJson()
+        });
+      }
     },
     getCListOptions: function () {
       this.cListOptions = this.$store.getters.cTodoListIds;
@@ -377,7 +405,7 @@ export default {
     },
     removeTodo: function () {
       this.$store.commit("setUndoElement", { type: 'task', todo: this.todo, index: this.index });
-      this.$store.commit("removeTodo", { toDoListId: this.todo.listId, index: this.index });
+      this.$store.commit("removeTodo", { toDoListId: this.todo.listId, todoId: this.todo.id });
       this.updateTodoList(this.todo.listId, this.$store.getters.todoLists[this.todo.listId]);
       let toast = new Toast(document.getElementById("taskRemoved"));
       toast.show();
@@ -414,7 +442,7 @@ export default {
         checked: this.todo.checked,
         listId: this.todo.listId,
         desc: this.todo.desc,
-        subTaskList: this.todo.subTaskList,
+        subTodos: this.todo.subTodos,
         color: this.todo.color,
         priority: 0,
         tags: [],
@@ -454,10 +482,10 @@ export default {
         text += this.$t("todoDetails.notes") + ":\n\n";
         text += this.todo.desc;
       }
-      if (this.todo.subTaskList.length > 0) {
+      if (this.todo.subTodos.length > 0) {
         text += "\n\n";
         text += this.$t("todoDetails.subtasks") + ":\n\n";
-        this.todo.subTaskList.forEach(function (task) {
+        this.todo.subTodos.forEach(function (task) {
           text += "- " + task.text + "\n";
         });
       }
@@ -470,11 +498,12 @@ export default {
     changeTime(time) {
       this.todo.time = time;
       if (!time) {
-        this.todo.alarm = false;
+        this.todo.alarm = 0;
       }
       this.updateTodoWithReorder();
     },
-    changeTask({ task, color }) {
+    changeTask({ taskId, color, task }) {
+      this.todo.taskId = taskId;
       this.todo.task = task;
       this.todo.color = color;
       // 当更换任务时，清空当前里程碑
@@ -483,31 +512,47 @@ export default {
       }
       this.updateTodo();
     },
-    changeMilestone({ milestone }) {
+    changeMilestone({ milestoneId, milestone }) {
       // 只操作单个milestone字段，不再维护milestones数组
-      this.todo.milestone = milestone;
+      this.todo.milestoneId = milestoneId || null;
+      this.todo.milestone = milestone || "";
       this.updateTodo();
     },
     changeAlarm() {
       if (this.todo.time) {
-        this.todo.alarm = this.todo.alarm ? false : true;
+        this.todo.alarm = this.todo.alarm ? 0 : 1;
         this.updateTodo();
       }
     },
-    changeDescription(desc) {
-      this.todo.desc = desc;
+    changeDescription(description) {
+      this.todo.description = description;
       this.updateTodo();
     },
     changeRepeatingEvent(repeatingEvent) {
       this.todo.repeatingEvent = repeatingEvent;
       this.updateTodo(false);
     },
+    toggleSubTaskCheck: function (index) {
+      // 切换子任务的checked状态（0表示false，1表示true）
+      this.todo.subTodos[index].checked = this.todo.subTodos[index].checked === 1 ? 0 : 1;
+      // 调用原有的点击处理函数
+      this.changeSubTaskClickhandler(index);
+      
+      // 调用store action切换后端子任务状态
+      if (this.todo.id) {
+        this.$store.dispatch('toggleSubTask', {
+          todoId: this.todo.id,
+          toDoListId: this.todo.listId,
+          subTaskIndex: index
+        });
+      }
+    },
     changeSubTaskClickhandler: function (index) {
       this.clickhandler.handle(function () { this.changeSubTask(index) }.bind(this), function () { this.editSubTask(index) }.bind(this), index);
     },
     changeSubTask: function (index) {
-      if (this.todo.subTaskList[index].checked && this.moveSubtaskToBotttom) {
-        this.todo.subTaskList.push(this.todo.subTaskList.splice(index, 1)[0]);
+      if (this.todo.subTodos[index].checked === 1 && this.moveSubtaskToBotttom) {
+        this.todo.subTodos.push(this.todo.subTodos.splice(index, 1)[0]);
       }
       this.updateTodo();
     },
@@ -525,16 +570,15 @@ export default {
       this.todoList = this.$store.getters.todoLists[newVal.toDo.listId];
       this.index = newVal.index;
       this.todo = this.todoList[this.index];
-      if (this.todo["desc"] == undefined) {
-        this.todo["desc"] = "";
-        this.todo["subTaskList"] = [];
-        this.todo["color"] = "none";
-        this.todo["priority"] = 0;
-        this.todo["tags"] = [];
-        this.todo["time"] = null;
-        this.todo["alarm"] = false;
-        this.todo["repeatingEvent"] = null;
-      }
+      // 单独初始化每个未定义的字段，而不是一次性重置所有字段
+      if (this.todo["desc"] == undefined) this.todo["desc"] = "";
+      if (this.todo["subTodos"] == undefined) this.todo["subTodos"] = [];
+      if (this.todo["color"] == undefined) this.todo["color"] = "none";
+      if (this.todo["priority"] == undefined) this.todo["priority"] = 0;
+      if (this.todo["tags"] == undefined) this.todo["tags"] = [];
+      if (this.todo["time"] == undefined) this.todo["time"] = null;
+      if (this.todo["alarm"] == undefined) this.todo["alarm"] = 0;
+      if (this.todo["repeatingEvent"] == undefined) this.todo["repeatingEvent"] = null;
       this.showingCalendar = moment(this.todo.listId, "YYYYMMDD", true).isValid();
       this.getCListOptions();
       this.loadingView = true;

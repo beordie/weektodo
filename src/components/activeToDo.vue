@@ -64,7 +64,7 @@ export default {
   methods: {
     removeTodo: function () {
       this.$store.commit("setUndoElement", { type: 'task', todo: this.activeTodo.toDo, index: this.activeTodo.index });
-      this.$store.commit("removeTodo", { toDoListId: this.activeTodo.toDoListId, index: this.activeTodo.index, });
+      this.$store.commit("removeTodo", { toDoListId: this.activeTodo.toDoListId, todoId: this.activeTodo.toDo.id, });
       notifications.refreshDayNotifications(this, this.activeTodo.toDoListId);
       toDoListRepository.update(this.activeTodo.toDoListId, this.$store.getters.todoLists[this.activeTodo.toDoListId]);
       let toast = new Toast(document.getElementById("taskRemoved"));
@@ -72,6 +72,7 @@ export default {
       this.hideToDoItem();
     },
     showToDoDetails: function () {
+      console.log("showToDoDetails:", this.activeTodo.toDo);
       this.$store.commit("actionsSelectedTodoIdUpdate", {
         toDo: this.activeTodo.toDo,
         index: this.activeTodo.index,
@@ -89,7 +90,7 @@ export default {
       this.clickhandler.handle(() => { this.checkToDo(id, index) }, this.activeTodo.edit, `${this.activeTodo.toDoListId}${this.activeTodo.index}`);
     },
     checkToDo: function (toDoListId, index) {
-      if (this.$store.getters.todoLists[toDoListId][index].checked && this.$store.getters.config.moveCompletedTaskToBottom) {
+      if (this.$store.getters.todoLists[toDoListId][index].checked === 1 && this.$store.getters.config.moveCompletedTaskToBottom) {
         this.$refs.currentTodo.style.display = `none`;
         this.$store.commit("moveTodoToEnd", { toDoListId: toDoListId, index: index, });
       }
@@ -126,9 +127,9 @@ export default {
     checkSubTask: function (subTask, index, e) {
       if (e.target.href) return;
 
-      if (!e.target.value) subTask.checked = !subTask.checked;
+      if (!e.target.value) subTask.checked = subTask.checked === 0 ? 1 : 0;
       var todoList = this.activeTodo.toDo.subTaskList;
-      if (subTask.checked && this.moveSubtaskToBotttom) { todoList.push(todoList.splice(index, 1)[0]); }
+      if (subTask.checked === 1 && this.moveSubtaskToBotttom) { todoList.push(todoList.splice(index, 1)[0]); }
       toDoListRepository.update(this.activeTodo.toDoListId, this.$store.getters.todoLists[this.activeTodo.toDoListId]);
     },
     timeFormat: function (date) {

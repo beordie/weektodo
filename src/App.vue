@@ -628,6 +628,7 @@ export default {
     },
     selectedTodo: function () {
       if (this.$store.getters.actions.selectedTodo) {
+        console.log("selectedTodo:", this.$store.getters.actions.selectedTodo);
         return this.$store.getters.actions.selectedTodo;
       }
       return null;

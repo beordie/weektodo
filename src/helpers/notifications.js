@@ -13,7 +13,7 @@ export default {
 
     if (todoList != null)
       todoList.forEach((todo) => {
-        if (todo.alarm && !todo.checked) {
+        if (todo.alarm === 1 && todo.checked === 0) {
           // 如果是时间范围对象，使用开始时间作为通知时间
           const notificationTime = typeof todo.time === 'object' && todo.time.start ? todo.time.start : todo.time;
           if (notificationTime && moment(notificationTime, "HH:mm") >= moment()) {

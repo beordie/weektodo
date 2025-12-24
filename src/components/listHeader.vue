@@ -128,7 +128,7 @@ export default {
     allTodoChecked: function () {
       let allChecked = true;
       this.toDoList.forEach(function (todo) {
-        if (!todo.checked) {
+        if (todo.checked === 0) {
           allChecked = false;
           return;
         }

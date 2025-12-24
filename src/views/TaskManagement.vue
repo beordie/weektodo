@@ -117,6 +117,14 @@
           <div class="stat-label">{{ $t('taskManagement.totalTasks') }}</div>
         </div>
       </div>
+      <div class="stat-card">
+        <div class="stat-icon"><i class="bi-clock"></i></div>
+        <div class="stat-content">
+          <div class="stat-number">{{ completedTasksTotalHours }}</div>
+          <div class="stat-label">{{ $t('taskManagement.completedHours') }}</div>
+        </div>
+      </div>
+      
     </div>
 
     <!-- 任务列表 -->
@@ -129,21 +137,27 @@
         :key="task.id"
         class="task-card"
         :class="{
-          'completed': task.completed,
-          'overdue': !task.completed && isOverdue(task),
-          'due-soon': !task.completed && isDueSoon(task)
+          'completed': task.completed === 1,
+          'overdue': task.completed !== 1 && isOverdue(task),
+          'due-soon': task.completed !== 1 && isDueSoon(task)
         }"
         :style="{ borderLeft: `4px solid ${task.color || '#2196F3'}` }"
         @click="openTaskDetails(task.id)"
       >
         <div class="task-card-header">
           <div class="task-title-container">
-            <input 
-              type="checkbox"
-              class="task-checkbox"
-              :checked="task.completed"
+            <!-- 根据任务完成状态显示不同图标 -->
+            <div 
+              class="task-status-icon"
               @click.stop="toggleTaskCompletion(task.id)"
-            />
+              :class="{ 'completed': task.completed === 1 }"
+            >
+              <!-- 使用项目现有的done.svg图标表示已完成任务 -->
+              <img v-if="task.completed === 1" src="/img/done.svg" alt="已完成" width="24" height="24" class="done-icon"/>
+              <svg v-else xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#9E9E9E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"></circle>
+              </svg>
+            </div>
             <h3 class="task-title">{{ task.title }}</h3>
           </div>
           <div class="task-actions">
@@ -189,7 +203,7 @@
             </div>
             <div class="meta-item" v-if="task.priority">
               <span class="priority-badge" :class="`priority-${task.priority}`">
-                {{ $t(`taskManagement.${task.priority}`) }}
+                {{ getPriorityName(task.priority) }}
               </span>
             </div>
           </div>
@@ -208,7 +222,7 @@
           </div>
           
           <!-- Milestone 进度 -->
-          <div class="milestone-progress" v-if="task.milestones && task.milestones.length > 0">
+          <div class="milestone-progress" v-if="task.milestoneCounter && task.milestoneCounter.total > 0">
             <div class="progress-info">
               <span class="progress-text">{{ getMilestoneProgress(task) }}%</span>
               <span class="progress-label">{{ $t('taskManagement.milestones') }}</span>
@@ -217,7 +231,7 @@
               <div class="progress-fill milestone-progress-fill" :style="{ width: getMilestoneProgress(task) + '%' }"></div>
             </div>
             <div class="milestones-count">
-              {{ getCompletedMilestonesCount(task) }}/{{ task.milestones.length }} {{ $t('taskManagement.milestonesCompleted') }}
+              {{ getCompletedMilestonesCount(task) }}/{{ task.milestoneCounter.total }} {{ $t('taskManagement.milestonesCompleted') }}
             </div>
           </div>
         </div>
@@ -313,9 +327,13 @@
                   v-model="currentTask.priority" 
                   class="form-control"
                 >
-                  <option value="low">{{ $t('taskManagement.low') }}</option>
-                  <option value="medium">{{ $t('taskManagement.medium') }}</option>
-                  <option value="high">{{ $t('taskManagement.high') }}</option>
+                  <option 
+                    v-for="priority in localPriorities" 
+                    :key="priority.id" 
+                    :value="priority.id"
+                  >
+                    {{ priority.name }}
+                  </option>
                 </select>
               </div>
             </div>
@@ -352,7 +370,8 @@
                   <div class="milestone-content">
                     <input 
                       type="checkbox" 
-                      v-model="milestone.completed"
+                      :checked="milestone.completed === 1"
+                      @change="milestone.completed = $event.target.checked ? 1 : 0"
                       class="milestone-checkbox"
                     >
                     <input 
@@ -382,22 +401,25 @@
             <div class="form-group">
               <label class="checkbox-label">
                 <input 
-                  v-model="currentTask.completed" 
+                  :checked="currentTask.completed === 1"
+                  @change="currentTask.completed = $event.target.checked ? 1 : 0"
                   type="checkbox" 
                   class="form-check-input"
                 >
                 {{ $t('taskManagement.markAsCompleted') }}
               </label>
             </div>
-            <div class="form-actions">
-              <button type="button" class="btn btn-secondary" @click="closeModal">
-                {{ $t('taskManagement.cancel') }}
-              </button>
-              <button type="submit" class="btn btn-primary">
-                {{ $t('taskManagement.save') }}
-              </button>
-            </div>
           </form>
+        </div>
+        <div class="modal-footer">
+          <div class="form-actions">
+            <button type="button" class="btn btn-secondary" @click="closeModal">
+              {{ $t('taskManagement.cancel') }}
+            </button>
+            <button type="button" class="btn btn-primary" @click="saveTask">
+              {{ $t('taskManagement.save') }}
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -564,6 +586,8 @@
 <script>
 import moment from 'moment';
 import taskRepository from '../repositories/taskRepository';
+import configAPI from '../helpers/api/configAPI';
+import taskAPI from '../helpers/api/taskAPI';
 
 export default {
   name: 'TaskManagement',
@@ -588,14 +612,28 @@ export default {
       color: '#2196F3',
       milestones: []
     },
+    
+    // 本地存储API获取的分类数据
+    localCategories: [],
+    // 本地存储API获取的优先级配置
+    localPriorities: [],
+    // 从API获取的仪表盘数据
+    dashboardData: null,
+    // 从API获取的任务数据
+    apiTasks: [],
+    // 加载状态
+    loadingDashboardData: false,
+    loadingTasks: false
     };
   },
   computed: {
     tasks() {
-      return this.$store.getters.tasks;
+      // 使用从API获取的任务数据，不再从store获取
+      return this.apiTasks;
     },
     taskCategories() {
-      return this.$store.getters.taskCategories;
+      // 只使用本地API获取的分类数据，不再从store获取
+      return this.localCategories.length > 0 ? this.localCategories : [];
     },
     allCategories() {
       // 如果没有从store获取到分类数据，提供一些默认分类
@@ -609,48 +647,157 @@ export default {
       return this.taskCategories;
     },
     filteredTasks() {
-      let allTasks = Object.values(this.tasks);
-      
-      // 按分类过滤
-      if (this.selectedCategory && this.selectedCategory !== '') {
-        allTasks = allTasks.filter(task => task.category === this.selectedCategory);
-      }
-      
-      // 按搜索关键词过滤
-      if (this.searchQuery) {
-        const query = this.searchQuery.toLowerCase();
-        allTasks = allTasks.filter(task => 
-          task.title.toLowerCase().includes(query) || 
-          (task.description && task.description.toLowerCase().includes(query))
-        );
-      }
-      
-      return allTasks;
+      // 直接返回从API获取的任务数据，因为过滤已经在后端完成
+      return this.apiTasks;
     },
     sortedAndFilteredTasks() {
-      return this.sortTasks([...this.filteredTasks]);
+      // 直接返回从API获取的任务数据，因为排序已经在后端完成
+      return this.apiTasks;
     },
     // 统计数据
     completedTasksCount() {
-      return Object.values(this.tasks).filter(task => task.completed).length;
+      return this.dashboardData ? this.dashboardData.completedTasks : 0;
     },
     overdueTasksCount() {
-      return Object.values(this.tasks).filter(task => !task.completed && this.isOverdue(task)).length;
+      return this.dashboardData ? this.dashboardData.overdueTasks : 0;
     },
     dueSoonTasksCount() {
-      return Object.values(this.tasks).filter(task => !task.completed && this.isDueSoon(task)).length;
+      return this.dashboardData ? this.dashboardData.upcomingTasks : 0;
     },
     totalTasksCount() {
-      return Object.keys(this.tasks).length;
+      return this.dashboardData ? this.dashboardData.totalTasks : 0;
+    },
+    // 所有已完成任务的总时间（小时）
+    completedTasksTotalHours() {
+      return this.dashboardData ? this.dashboardData.totalTodoTime : 0;
     },
   },
-  // 搜索逻辑已在computed属性中实现，无需额外的watch监听
+  watch: {
+    // 监听过滤和排序参数变化，重新加载任务数据
+    selectedCategory() {
+      this.loadTasksFromAPI();
+    },
+    searchQuery() {
+      this.loadTasksFromAPI();
+    },
+    sortBy() {
+      this.loadTasksFromAPI();
+    },
+    sortOrder() {
+      this.loadTasksFromAPI();
+    }
+  },
   mounted() {
-    // 加载任务数据
-    this.$store.dispatch('loadTasks');
-    this.$store.dispatch('loadTaskCategories');
+    // 从后端API获取任务数据
+    this.loadTasksFromAPI();
+    
+    // 从后端API获取分类数据
+    this.loadCategoriesFromAPI();
+    
+    // 从后端API获取优先级配置
+    this.loadPrioritiesFromAPI();
+    
+    // 从后端API获取仪表盘数据
+    this.loadDashboardData();
   },
   methods: {
+    // 从API加载任务数据，传递过滤和排序参数
+    loadTasksFromAPI() {
+      this.loadingTasks = true;
+      
+      // 准备请求参数
+      const params = {
+        title: this.searchQuery,
+        category: this.selectedCategory,
+        // 转换前端字段名与后端对应
+        sortBy: this.sortBy === 'dueDate' ? 'endDate' : this.sortBy,
+        sortOrder: this.sortOrder
+      };
+      
+      taskAPI.getAllTasks(params)
+        .then(response => {
+          if (response) {
+            // 将API返回的任务数据存储到本地变量
+            this.apiTasks = response;
+            // 手动触发视图更新
+            this.$forceUpdate();
+          } else {
+            console.warn('⚠️ TaskManagement: API返回的任务数据格式不正确');
+          }
+        })
+        .catch(error => {
+          console.error('❌ TaskManagement: Failed to load tasks from API:', error);
+          // 如果API调用失败，使用空数组
+          this.apiTasks = [];
+        })
+        .finally(() => {
+          this.loadingTasks = false;
+        });
+    },
+    // 从API加载仪表盘数据
+    loadDashboardData() {
+      this.loadingDashboardData = true;
+      taskAPI.getTaskDashboardData()
+        .then(response => {
+          if (response) {
+            this.dashboardData = response;
+            // 手动触发视图更新
+            this.$forceUpdate();
+          } else {
+            console.warn('⚠️ TaskManagement: API返回的数据格式不正确');
+          }
+        })
+        .catch(error => {
+          console.error('❌ TaskManagement: Failed to load dashboard data from API:', error);
+        })
+        .finally(() => {
+          this.loadingDashboardData = false;
+        });
+    },
+    
+     // 从API加载分类数据
+     loadCategoriesFromAPI() {
+       configAPI.getCategories()
+         .then(response => {
+           if (response && response.categories) {
+             // 直接将获取到的分类数据保存到本地变量
+             this.localCategories = response.categories;
+             // 手动触发视图更新
+             this.$forceUpdate();
+           } else {
+             console.warn('⚠️ TaskManagement: API返回的数据格式不正确，没有categories字段');
+           }
+         })
+         .catch(error => {
+           console.error('❌ TaskManagement: Failed to load categories from API:', error);
+           // 如果API调用失败，直接提供默认分类数据，不再从store获取
+           this.localCategories = [];
+           // 手动触发视图更新
+           this.$forceUpdate();
+         });
+     },
+     
+     // 从API加载优先级配置
+     loadPrioritiesFromAPI() {
+       configAPI.getPriorities()
+         .then(response => {
+           if (response && response.priorities) {
+             // 直接将获取到的优先级配置保存到本地变量
+             this.localPriorities = response.priorities;
+             // 手动触发视图更新
+             this.$forceUpdate();
+           } else {
+             console.warn('⚠️ TaskManagement: API返回的数据格式不正确，没有priorities字段');
+           }
+         })
+         .catch(error => {
+           console.error('❌ TaskManagement: Failed to load priorities from API:', error);
+           // 如果API调用失败，使用空数组
+           this.localPriorities = [];
+           // 手动触发视图更新
+           this.$forceUpdate();
+         });
+     },
     // 添加milestone
     addMilestone() {
       // 确保milestones是数组，在Vue 3中直接赋值即可保持响应式
@@ -661,7 +808,7 @@ export default {
       // 添加新的里程碑对象
       this.currentTask.milestones.push({
         title: '',
-        completed: false
+        completed: 0
       });
     },
     
@@ -699,7 +846,7 @@ export default {
     },
     
     // 保存任务
-    saveTask() {
+    async saveTask() {
       // 验证日期
       if (moment(this.currentTask.startDate).isAfter(moment(this.currentTask.endDate))) {
         // 由于notifications模块没有showToast方法，使用浏览器原生alert作为替代
@@ -707,48 +854,60 @@ export default {
         return;
       }
       
-      if (this.editingTask) {
-        // 更新现有任务
-        // 确保milestones数组存在，即使为空
-        const milestones = Array.isArray(this.currentTask.milestones) ? this.currentTask.milestones : [];
-        const updates = {
-          ...this.currentTask,
-          updatedAt: new Date().toISOString(),
-          milestones: milestones
-        };
+      try {
+        if (this.editingTask) {
+          // 更新现有任务
+          // 确保milestones数组存在，即使为空
+          const milestones = Array.isArray(this.currentTask.milestones) ? this.currentTask.milestones : [];
+          const updates = {
+            ...this.currentTask,
+            updatedAt: new Date().toISOString(),
+            milestones: milestones,
+            // 将boolean值转换为整数：false -> 0, true -> 1
+            completed: this.currentTask.completed ? 1 : 0
+          };
+          
+          // 调用API更新任务
+          await taskAPI.updateTask(this.editingTask, updates);
+          // 由于notifications模块没有showToast方法，暂时省略通知
+        } else {
+          // 确保milestones数组存在，即使为空
+          const milestones = Array.isArray(this.currentTask.milestones) ? this.currentTask.milestones : [];
+          const newTask = {
+            ...this.currentTask,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            milestones: milestones,
+            // 将boolean值转换为整数：false -> 0, true -> 1
+            completed: this.currentTask.completed ? 1 : 0
+          };
+          
+          // 调用API创建任务
+          await taskAPI.createTask(newTask);
+          // 由于notifications模块没有showToast方法，暂时省略通知
+        }
         
-        this.$store.commit('updateTask', {
-          taskId: this.editingTask,
-          updates: updates,
-        });
-        taskRepository.update(this.editingTask, updates);
-        // 由于notifications模块没有showToast方法，暂时省略通知
-      } else {
-        // 创建新任务
-        const taskId = moment().format('YYYYMMDDTHHmmssS');
-        // 确保milestones数组存在，即使为空
-        const milestones = Array.isArray(this.currentTask.milestones) ? this.currentTask.milestones : [];
-        const newTask = {
-          ...this.currentTask,
-          id: taskId,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-          milestones: milestones
-        };
-        
-        this.$store.commit('addTask', newTask);
-        taskRepository.update(taskId, newTask);
-        // 由于notifications模块没有showToast方法，暂时省略通知
+        // 保存成功后重新加载任务列表
+        this.loadTasksFromAPI();
+        this.closeModal();
+      } catch (error) {
+        console.error('保存任务失败:', error);
+        alert(this.$t('taskManagement.saveTaskFailed'));
       }
-      
-      this.closeModal();
     },
     
     // 打开任务详情
-    openTaskDetails(taskId) {
-      this.editingTask = taskId;
-      this.currentTask = { ...this.tasks[taskId] };
-      this.showModal = true;
+    async openTaskDetails(taskId) {
+      try {
+        this.editingTask = taskId;
+        // 从API获取任务详情
+        const taskDetails = await taskAPI.getTaskById(taskId);
+        this.currentTask = taskDetails;
+        this.showModal = true;
+      } catch (error) {
+        console.error('获取任务详情失败:', error);
+        this.$message.error('获取任务详情失败');
+      }
     },
     
     // 打开任务看板
@@ -799,17 +958,31 @@ export default {
     
     // 删除任务
     deleteTask(taskId) {
-      if (confirm(this.$t('taskManagement.confirmDeleteTask'))) {
-        this.$store.commit('removeTask', taskId);
-        taskRepository.remove(taskId);
-        // 由于notifications模块没有showToast方法，暂时省略通知
+      if (confirm(this.$t('taskManagement.confirmDeleteTask'))) {        
+        // 调用API删除任务
+        taskAPI.deleteTask(taskId)
+          .then(() => {
+            // 删除成功，可以添加成功提示
+            console.log('Task deleted successfully');
+            // 重新加载任务列表以显示最新状态
+            this.loadTasksFromAPI();
+          })
+          .catch(error => {
+            // 删除失败，恢复本地状态并显示错误信息
+            console.error('Failed to delete task:', error);
+            // 这里可以添加错误提示，例如使用toast组件
+            alert(this.$t('taskManagement.deleteTaskError'));
+            
+            // 重新加载任务列表以恢复正确的状态
+            this.loadTasksFromAPI();
+          });
       }
     },
     
     // 切换任务完成状态
     toggleTaskCompletion(taskId) {
       const task = this.tasks[taskId];
-      const updatedTask = { ...task, completed: !task.completed };
+      const updatedTask = { ...task, completed: task.completed === 1 ? 0 : 1 };
       
       this.$store.commit('updateTask', {
         taskId,
@@ -863,7 +1036,7 @@ export default {
           );
           
           // 如果找到且已完成，增加计数
-          if (matchedTodo && matchedTodo.checked) {
+          if (matchedTodo && matchedTodo.checked === 1) {
             completedCount++;
           }
         });
@@ -874,21 +1047,25 @@ export default {
     
     // 获取milestone进度
     getMilestoneProgress(task) {
-      if (!task.milestones || task.milestones.length === 0) return 0;
-      const completedMilestones = task.milestones.filter(milestone => milestone && milestone.completed).length;
-      return Math.round((completedMilestones / task.milestones.length) * 100);
+      if (!task.milestoneCounter || task.milestoneCounter.total === 0) return 0;
+      return Math.round((task.milestoneCounter.done / task.milestoneCounter.total) * 100);
     },
     
     // 获取已完成的milestones数量
     getCompletedMilestonesCount(task) {
-      if (!task.milestones) return 0;
-      return task.milestones.filter(milestone => milestone && milestone.completed).length;
+      return task.milestoneCounter ? task.milestoneCounter.done : 0;
     },
     
     // 获取分类名称
     getCategoryName(categoryId) {
       const category = this.allCategories.find(cat => cat.id === categoryId);
       return category ? category.name : '';
+    },
+    
+    // 获取优先级名称
+    getPriorityName(priorityId) {
+      const priority = this.localPriorities.find(p => p.id === priorityId);
+      return priority ? priority.name : '';
     },
     
     // 获取分类颜色
@@ -917,8 +1094,8 @@ export default {
             comparison = moment(a.endDate).valueOf() - moment(b.endDate).valueOf();
             break;
           case 'priority': {
-            const priorityOrder = { urgent: 4, high: 3, medium: 2, low: 1 };
-            comparison = priorityOrder[b.priority] - priorityOrder[a.priority];
+      // 直接使用数字优先级进行排序，假设数值越大优先级越高
+      comparison = b.priority - a.priority;
             break;
           }
           case 'createdAt':
@@ -1182,6 +1359,7 @@ export default {
   justify-content: center;
   width: 48px;
   height: 48px;
+  flex-shrink: 0; /* 防止图标在空间不足时收缩，保持圆形 */
   background: #007bff;
   color: white;
   border-radius: 50%;
@@ -1339,6 +1517,21 @@ export default {
   cursor: pointer;
 }
 
+.task-status-icon {
+  margin-top: 4px;
+  width: 20px;
+  height: 20px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.2s ease;
+}
+
+.task-status-icon:hover {
+  transform: scale(1.1);
+}
+
 .task-title {
   margin: 0;
   font-size: 18px;
@@ -1414,17 +1607,17 @@ export default {
   font-weight: 500;
 }
 
-.priority-low {
+.priority-1 {
   background: #d1ecf1;
   color: #0c5460;
 }
 
-.priority-medium {
+.priority-2 {
   background: #fff3cd;
   color: #856404;
 }
 
-.priority-high {
+.priority-3 {
   background: #ffeaa7;
   color: #856404;
 }
@@ -1538,9 +1731,10 @@ export default {
   width: 100%;
   max-width: 600px;
   max-height: 90vh;
-  overflow-y: auto;
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
   animation: slideUp 0.3s;
+  display: flex;
+  flex-direction: column;
 }
 
 .modal-header {
@@ -1549,6 +1743,10 @@ export default {
   align-items: center;
   padding: 20px 24px;
   border-bottom: 1px solid #e9ecef;
+  position: sticky;
+  top: 0;
+  background: white;
+  z-index: 10;
 }
 
 .modal-header h3 {
@@ -1580,6 +1778,19 @@ export default {
 
 .modal-body {
   padding: 24px;
+  overflow-y: auto;
+  flex-grow: 1;
+}
+
+.modal-footer {
+  padding: 12px 24px;
+  background: none;
+}
+
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
 }
 
 .form-group {
@@ -1650,9 +1861,7 @@ select:focus {
   display: flex;
   justify-content: flex-end;
   gap: 10px;
-  margin-top: 30px;
-  padding-top: 20px;
-  border-top: 1px solid #e9ecef;
+  background: none;
 }
 
 /* 按钮样式 */

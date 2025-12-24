@@ -4,14 +4,13 @@
     <!-- 点击区域 -->
     <div class="task-selector-trigger" @click="toggleDropdown">
       <i class="bi bi-person-workspace"></i>
-      <span v-if="task" class="selected-task-text">{{ task }}</span>
+      <span v-if="taskId" class="selected-task-text">{{ task }}</span>
     </div>
     
     <!-- 下拉菜单 -->
     <div v-show="showDropdown" class="dropdown-menu-task-selector">
       <div v-for="task in taskOptions" :key="task.title" class="dropdown-item" @click="selectTask(task)">
         <div class="task-color-indicator" :style="{ backgroundColor: task.color || '#2196F3' }"></div>
-        <i class="bi bi-tag-fill"></i>
         <span>{{ task.title }}</span>
       </div>
     </div>
@@ -19,27 +18,37 @@
 </template>
 
 <script>
+import taskAPI from '../../helpers/api/taskAPI';
+
 export default {
   name: "taskSelector",
   props: {
-    task: {
+    taskId: {
       type: String,
       default: ""
     }
   },
   computed: {
-    // 从store获取所有任务作为选项
+    // 从本地数据获取所有任务作为选项
     taskOptions() {
-      const tasks = this.$store.getters.tasks || {};
-      return Object.values(tasks)
+      return this.tasks
         .filter(task => task.title && task.title.trim() !== "")
         .sort((a, b) => a.title.localeCompare(b.title));
+    },
+    // 根据taskId获取对应的任务标题
+    task() {
+      if (!this.taskId) return '';
+      const selectedTask = this.tasks.find(task => task.id === this.taskId);
+      return selectedTask ? selectedTask.title : '';
     }
   },
   data() {
     return {
       selectedTask: this.task,
-      showDropdown: false
+      showDropdown: false,
+      tasks: [],
+      loading: false,
+      error: null
     };
   },
   watch: {
@@ -50,16 +59,40 @@ export default {
   mounted() {
     // 添加点击外部关闭下拉菜单的事件监听
     document.addEventListener('click', this.handleClickOutside);
+    // 调用API获取所有任务
+    this.loadTasks();
   },
   beforeUnmount() {
     // 组件卸载前移除事件监听
     document.removeEventListener('click', this.handleClickOutside);
   },
   methods: {
+    // 调用API获取所有任务
+    loadTasks() {
+      this.loading = true;
+      this.error = null;
+      
+      taskAPI.getAllTasks()
+        .then(response => {
+          if (response) {
+            this.tasks = response;
+          } else {
+            console.warn('⚠️ TaskSelector: API返回的任务数据格式不正确');
+            this.tasks = [];
+          }
+        })
+        .catch(error => {
+          console.error('❌ TaskSelector: Failed to load tasks from API:', error);
+          this.error = error;
+          this.tasks = [];
+        })
+        .finally(() => {
+          this.loading = false;
+        });
+    },
     selectTask(task) {
-      this.selectedTask = task.title;
-      this.$emit('update:task', this.selectedTask);
-      this.$emit('task-selected', { task: task.title, color: task.color });
+      this.selectedTask = task.id;
+      this.$emit('task-selected', { taskId: task.id, color: task.color, task: task.title });
       this.showDropdown = false;
     },
     toggleDropdown() {

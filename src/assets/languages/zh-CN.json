@@ -32,6 +32,7 @@
     "milestonePlaceholder": "请输入里程碑名称",
     "milestonesCompleted": "已完成",
     "clearMilestone": "清除里程碑",
+    "completedHours": "已完成时间（小时）",
 
     "newTask": "新建任务",
     "manageTasks": "管理任务",
@@ -45,6 +46,8 @@
     
     "updateTask": "更新任务",
     "deleteTask": "删除任务",
+    "confirmDeleteTask": "确定要删除此任务吗？",
+    "deleteTaskError": "删除任务失败，请重试。",
     "viewKanban": "查看看板",
     "kanbanFeatureComingSoon": "看板功能即将上线，敬请期待！",
     "kanban": "看板",

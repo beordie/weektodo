@@ -3,6 +3,7 @@ import dbRepository from "../repositories/dbRepository";
 import { Toast, Modal } from "bootstrap";
 import migrations from "../migrations/migrations";
 import isElectron from "is-electron";
+import Todo from "../models/todoModel";
 
 export default {
   export() {
@@ -75,7 +76,8 @@ function getTasksData(filename, data, event) {
   request.onsuccess = function () {
     let cursor = request.result;
     if (cursor) {
-      data.tasks[cursor.key] = cursor.value;
+      // 使用Todo模型标准化任务数据
+      data.tasks[cursor.key] = Todo.fromJson(cursor.value).toJson();
       cursor.continue();
     } else {
       getRepeatinEventData(filename, data, event);

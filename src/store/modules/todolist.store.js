@@ -1,4 +1,5 @@
-import dbRepository from "../../repositories/dbRepository";
+import todoAPI from "../../helpers/api/todoAPI";
+import Todo from "../../models/todoModel";
 
 const state = {
   todoLists: {},
@@ -26,32 +27,90 @@ const mutations = {
     state.todoLists[obj] = [];
   },
   checkTodo(state, obj) {
-    state.todoLists[obj.toDoListId][obj.index].checked = !state.todoLists[obj.toDoListId][obj.index].checked;
+    const todo = state.todoLists[obj.toDoListId][obj.index];
+    todo.checked = todo.checked === 0 ? 1 : 0;
   },
   moveTodoToEnd(state, obj) {
       state.todoLists[obj.toDoListId].push(state.todoLists[obj.toDoListId].splice(obj.index, 1)[0]);
   },
   addTodo(state, toDo) {
-    state.todoLists[toDo.listId].push(toDo);
+    // 使用Todo模型标准化数据结构
+    const todo = Todo.fromJson(toDo);
+    // 调用 API 创建待办事项
+    todoAPI.createTodo(todo.toJson())
+      .then(() => {
+        // 创建成功后，重新加载当前列表的 todos
+        return this.dispatch('loadTodoLists', todo.listId);
+      })
+      .catch((error) => {
+        console.error('创建待办事项失败:', error);
+      });
   },
+  // param obj: {todoId: string, task: {}}
   updateTodo(state, obj) {
-    state.todoLists[obj.toDoListId][obj.index].repeatingEvent = null;
-    state.todoLists[obj.toDoListId][obj.index].text = obj.text;
+    if (obj.todoId && obj.task) {
+      // 使用Todo模型标准化数据结构
+      const todo = Todo.fromJson(obj.task);
+      // 调用 API 更新待办事项
+      todoAPI.updateTodo(obj.todoId, todo.toJson())
+      .then(() => {
+        // 创建成功后，重新加载当前列表的 todos
+        return this.dispatch('loadTodoLists', todo.listId);
+      }).catch((error) => {
+          console.error('更新待办事项失败:', error);
+        });
+    }
   },
+  // param obj: {toDoListId: string, todoId: string}
   removeTodo(state, obj) {
-    state.todoLists[obj.toDoListId].splice(obj.index, 1);
+    // 直接调用 API 删除后端数据
+    if (obj.todoId) {
+      todoAPI.deleteTodo(obj.todoId)
+      .then(() => {
+        // 创建成功后，重新加载当前列表的 todos
+        return this.dispatch('loadTodoLists', obj.toDoListId);
+      }).catch((error) => {
+          console.error('删除待办事项失败:', error);
+        });
+    }
+  },
+  // param obj: {toDoListId: string, todoId: string}
+  toggleTodo(state, obj) {
+    // 调用 API 切换待办事项状态
+    if (obj.todoId) {
+      todoAPI.toggleTodo(obj.todoId)
+      .then(() => {
+        // 切换成功后，重新加载当前列表的 todos
+        return this.dispatch('loadTodoLists', obj.toDoListId);
+      }).catch((error) => {
+          console.error('切换待办事项状态失败:', error);
+        });
+    }
+  },
+  // param obj: {toDoListId: string, todoId: string, subTaskIndex: number}
+  toggleSubTask({ dispatch }, obj) {
+    // 调用 API 切换子任务状态
+    if (obj.todoId) {
+      todoAPI.toggleSubTask(obj.todoId, obj.subTaskIndex)
+      .then(() => {
+        // 切换成功后，重新加载当前列表的 todos
+        return dispatch('loadTodoLists', obj.toDoListId);
+      }).catch((error) => {
+          console.error('切换子任务状态失败:', error);
+        });
+    }
   },
   insertTodo(state, obj) {
     state.todoLists[obj.toDoListId].splice(obj.index, 0, obj.toDo);
   },
   checkAllItems(state, toDoListId) {
     state.todoLists[toDoListId].forEach((toDo) => {
-      toDo.checked = true;
+      toDo.checked = 1;
     });
   },
   moveUndoneItems(state, obj) {
     for (let i = state.todoLists[obj.origenId].length - 1; i >= 0; i--) {
-      if (!state.todoLists[obj.origenId][i].checked) {
+      if (state.todoLists[obj.origenId][i].checked === 0) {
         state.todoLists[obj.origenId][i].repeatingEvent = null;
         state.todoLists[obj.origenId][i].listId = obj.destinyId;
         state.todoLists[obj.destinyId].unshift(state.todoLists[obj.origenId][i]);
@@ -80,54 +139,67 @@ const mutations = {
 
 const actions = {
   loadTodoLists({ commit }, todoListId) {
-    return new Promise((resolve) => {
-      let db_req = dbRepository.open();
-      db_req.onsuccess = function (event) {
-        let db = event.target.result;
-        var get_req = dbRepository.get(db, "todo_lists", todoListId);
-        get_req.onsuccess = function (event) {
-          let todoList = event.target.result;
-          if (todoList) {
-            commit("loadTodoLists", { todoListId: todoListId, todoList: todoList });
-          } else {
-            commit("loadTodoLists", { todoListId: todoListId, todoList: [] });
-            dbRepository.add(db, "todo_lists", todoListId, []);
-          }
+    return new Promise((resolve, reject) => {
+      // 调用API获取待办事项列表
+      todoAPI.getTodosByListId(todoListId)
+        .then((todoList) => {
+          // 使用Todo模型标准化数据结构
+          const processedTodoList = todoList.map(item => {
+            if (!item.id) {
+              // 生成唯一id
+              item.id = Date.now().toString() + Math.random().toString(36).substring(2, 9);
+            }
+            return Todo.fromJson(item);
+          });
+          commit("loadTodoLists", { todoListId: todoListId, todoList: processedTodoList });
           resolve();
-        };
-      };
+        })
+        .catch((error) => {
+          console.error("获取待办事项列表失败:", error);
+          // API调用失败，不再从本地数据库获取
+          reject(error);
+        });
     });
   },
   
   // 加载所有todo列表数据
   loadAllTodoLists({ commit }) {
-    return new Promise((resolve) => {
-      let db_req = dbRepository.open();
-      db_req.onsuccess = function (event) {
-        let db = event.target.result;
-        var cursor_req = dbRepository.selectAll(db, "todo_lists");
-        let allLists = {};
-        
-        cursor_req.onsuccess = function(event) {
-          let cursor = event.target.result;
-          if (cursor) {
-            // 存储每个列表的数据
-            allLists[cursor.key] = cursor.value;
-            // 提交到state
-            commit("loadTodoLists", { todoListId: cursor.key, todoList: cursor.value });
-            cursor.continue();
-          } else {
-            // 遍历完成
-            console.log('所有todo列表已加载完成');
-            resolve(allLists);
+    return new Promise((resolve, reject) => {
+      // 调用API获取所有待办事项列表
+      todoAPI.getAll()
+        .then((todos) => {
+          // 使用Todo模型标准化数据结构
+          const processedTodos = todos.map(todo => {
+            if (!todo.id) {
+              // 生成唯一id
+              todo.id = Date.now().toString() + Math.random().toString(36).substring(2, 9);
+            }
+            return Todo.fromJson(todo);
+          });
+          
+          // 按列表ID分组待办事项
+          const todoLists = processedTodos.reduce((acc, todo) => {
+            const listId = todo.listId;
+            if (!acc[listId]) {
+              acc[listId] = [];
+            }
+            acc[listId].push(todo);
+            return acc;
+          }, {});
+          
+          // 遍历所有列表并提交到state
+           for (let todoListId in todoLists) {
+             if (Object.prototype.hasOwnProperty.call(todoLists, todoListId)) {
+              commit("loadTodoLists", { todoListId: todoListId, todoList: todoLists[todoListId] });
+            }
           }
-        };
-        
-        cursor_req.onerror = function(event) {
-          console.error('加载所有todo列表失败:', event.target.error);
-          resolve({});
-        };
-      };
+          resolve(todoLists);
+        })
+        .catch((error) => {
+          console.error("获取所有待办事项列表失败:", error);
+          // API调用失败，不再从本地数据库获取
+          reject(error);
+        });
     });
   },
 };

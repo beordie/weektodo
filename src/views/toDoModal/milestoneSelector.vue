@@ -4,7 +4,7 @@
     <!-- 点击区域 -->
     <div class="milestone-selector-trigger" @click="toggleDropdown" v-if="selectedTask">
       <i class="bi bi-flag"></i>
-      <span v-if="milestone" class="selected-milestone-text">{{ milestone }}</span>
+      <span v-if="milestoneId" class="selected-milestone-text">{{ milestone }}</span>
     </div>
     
     <!-- 下拉菜单 -->
@@ -22,14 +22,16 @@
 </template>
 
 <script>
+import taskAPI from '../../helpers/api/taskAPI';
+
 export default {
   name: "milestoneSelector",
   props: {
-    task: {
+    taskId: {
       type: String,
       default: ""
     },
-    milestone: {
+    milestoneId: {
       type: String,
       default: ""
     }
@@ -37,51 +39,90 @@ export default {
   computed: {
     // 当前选中的任务
     selectedTask() {
-      return this.task;
+      return this.taskId;
     },
     // 根据当前选中的任务获取相关里程碑选项
     milestoneOptions() {
-      if (!this.selectedTask) return [];
-      
-      const tasks = this.$store.getters.tasks || {};
-      const currentTask = Object.values(tasks).find(t => t.title === this.selectedTask);
-      
-      if (currentTask && currentTask.milestones && Array.isArray(currentTask.milestones)) {
-        // 保持兼容，仍然使用任务层面的milestones数组
-        return currentTask.milestones;
-      }
-      
-      return [];
+      return this.milestones || [];
+    },
+    // 根据milestoneId获取对应的里程碑标题
+    milestone() {
+      if (!this.milestoneId) return '';
+      const selectedMilestone = this.milestones.find(milestone => milestone.id === this.milestoneId);
+      return selectedMilestone ? selectedMilestone.title : '';
     }
   },
   data() {
     return {
-      showDropdown: false
+      showDropdown: false,
+      milestones: [],
+      loading: false,
+      error: null,
+      taskIdMap: new Map() // 用于存储任务标题到ID的映射
     };
+  },
+  watch: {
+    // 当任务ID变化时重新获取里程碑
+    taskId(newTaskId, oldTaskId) {
+      if (newTaskId !== oldTaskId) {
+        this.loadMilestones();
+      }
+    },
+    // 当里程碑ID变化时更新显示
+    milestoneId() {
+      // 里程碑ID变化时不需要重新加载里程碑列表
+    }
   },
   mounted() {
     // 添加点击外部关闭下拉菜单的事件监听
     document.addEventListener('click', this.handleClickOutside);
+    // 初始加载里程碑
+    this.loadMilestones();
   },
   beforeUnmount() {
     // 组件卸载前移除事件监听
     document.removeEventListener('click', this.handleClickOutside);
   },
   methods: {
-    selectMilestone(milestone) {
-      const milestoneTitle = typeof milestone === 'object' && milestone.title 
-        ? milestone.title 
-        : milestone;
+    // 调用API获取里程碑
+    loadMilestones() {
+      if (!this.selectedTask) {
+        this.milestones = [];
+        return;
+      }
       
+      this.loading = true;
+      this.error = null;
+      
+      // 直接使用传入的taskId获取里程碑
+      taskAPI.getMilestonesByTaskId(this.selectedTask)
+        .then(milestones => {
+          if (milestones) {
+            this.milestones = milestones;
+          } else {
+            console.warn('⚠️ MilestoneSelector: API返回的里程碑数据格式不正确');
+            this.milestones = [];
+          }
+        })
+        .catch(error => {
+          console.error('❌ MilestoneSelector: Failed to load milestones from API:', error);
+          this.error = error;
+          this.milestones = [];
+        })
+        .finally(() => {
+          this.loading = false;
+        });
+    },
+    selectMilestone(milestone) {
       this.$emit('milestone-selected', { 
-        task: this.selectedTask, 
-        milestone: milestoneTitle 
+        milestoneId: milestone.id || null,
+        milestone: milestone.title || ""
       });
       this.showDropdown = false;
     },
     clearMilestone() {
       this.$emit('milestone-selected', { 
-        task: this.selectedTask, 
+        milestoneId: null, 
         milestone: "" 
       });
       this.showDropdown = false;

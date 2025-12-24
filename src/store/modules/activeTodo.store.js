@@ -2,7 +2,7 @@ const state = {
   activeTodo: {
     toDo: {
       text: "Text",
-      checked: false,
+      checked: 0,
       listId: 1,
       desc: "",
       subTaskList: [],
@@ -10,7 +10,7 @@ const state = {
       priority: 0,
       tags: [],
       time: null,
-      alarm: false,
+      alarm: 0,
       repeatingEvent: null,
     },
   },
@@ -24,6 +24,7 @@ const getters = {
 
 const mutations = {
   setActiveTodo(state, obj) {
+    console.log("setActiveTodo:", obj.toDo);
     state.activeTodo = obj;
   },
 };

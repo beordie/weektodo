@@ -32,6 +32,7 @@
 
 <script>
 import toDoListRepository from "../repositories/toDoListRepository";
+import Todo from "../models/todoModel";
 import moment from "moment";
 import linkifyStr from 'linkify-string';
 
@@ -62,10 +63,12 @@ export default {
     },
     doneEdit: function () {
       this.editing = false;
+      // 使用Todo模型标准化数据结构
+      const todo = Todo.fromJson(this.toDo);
+      todo.text = this.text;
       this.$store.commit("updateTodo", {
-        toDoListId: this.toDoListId,
-        index: this.index,
-        text: this.text,
+        todoId: this.toDo.id,
+        task: todo.toJson(),
       });
       toDoListRepository.update(this.toDoListId, this.$store.getters.todoLists[this.toDoListId]);
     },
@@ -95,6 +98,7 @@ export default {
       return moment(date, "HH:mm").format("hh:mm a");
     },
     showToDoItem: function () {
+      console.log("showToDoItem:", this.toDo);
       var activeTodo = {
         toDo: this.toDo,
         index: this.index,

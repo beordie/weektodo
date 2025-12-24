@@ -26,14 +26,14 @@ export default {
     });
   },
   removeGeneratedRepeatingEvents(listId, vue) {
-    vue.$store.getters.todoLists[listId].forEach((todo, index) => {
+    vue.$store.getters.todoLists[listId].forEach((todo) => {
       if (todo.repeatingEvent && !vue.$store.getters.repeatingEventList[todo.repeatingEvent]) {
         if (moment(todo.listId).isBefore(Date(), "day")) {
           todo.repeatingEvent = null;
         } else {
           vue.$store.commit("removeTodo", {
             toDoListId: todo.listId,
-            index: index,
+            todoId: todo.id,
           });
         }
         toDoListRepository.update(todo.listId, vue.$store.getters.todoLists[todo.listId]);
