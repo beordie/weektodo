@@ -34,6 +34,15 @@ export const taskAPI = {
   getTaskDashboardData() {
     return request('/tasks/dashboard');
   },
+
+  /**
+   * 根据任务ID获取任务看板数据
+   * @param {string} taskId - 任务ID
+   * @returns {Promise} - 返回任务看板数据的Promise
+   */
+  getTaskDashboardDataByTaskId(taskId) {
+    return request(`/tasks/${taskId}/dashboard`);
+  },
   
   /**
    * 根据ID获取任务
@@ -136,6 +145,33 @@ export const taskAPI = {
     return request(`/tasks/${taskId}/milestones/${milestoneId}`, {
       method: 'DELETE'
     });
+  },
+
+  /**
+   * 获取任务的里程碑统计数据
+   * @param {string} taskId - 任务ID
+   * @returns {Promise} - 返回里程碑统计数据的Promise
+   */
+  getMilestoneStatistics(taskId) {
+    return request(`/tasks/${taskId}/milestones/statistics`);
+  },
+
+  /**
+   * 获取任务的所有待办事项
+   * @param {string} taskId - 任务ID
+   * @returns {Promise} - 返回待办事项列表的Promise
+   */
+  getTaskTodos(taskId) {
+    return request(`/tasks/${taskId}/todos`);
+  },
+
+  /**
+   * 获取任务近一年的待办事项创建统计
+   * @param {string} taskId - 任务ID
+   * @returns {Promise} - 返回待办事项创建统计列表的Promise
+   */
+  getTodoCreationStats(taskId) {
+    return request(`/tasks/${taskId}/todos/stats`);
   }
 };
 

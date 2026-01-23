@@ -8,6 +8,7 @@ import com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.Data;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -118,7 +119,76 @@ public class Todo implements CheckStatus, Comparable<Todo> {
     public boolean checkCompleted() {
         return this.checked == 1;
     }
+    
+    @JsonIgnore
+    @Override
+    public boolean checkOverdue(long overdueThresholdSeconds) {
+        // 如果已完成，则不逾期
+        if (checkCompleted()) {
+            return false;
+        }
+        
+        // 如果没有时间信息或结束时间，则不逾期
+        if (this.time == null || this.time.getEnd() == null) {
+            return false;
+        }
+        
+        try {
+            // 获取当前时间
+            java.time.LocalDateTime now = java.time.LocalDateTime.now();
+            
+            // 使用time.getEndTime方法获取完整的结束时间LocalDateTime
+            java.time.LocalDateTime endDateTime = this.time.getEndTime(this.listId);
+            
+            // 检查获取结束时间是否成功
+            if (endDateTime == null) {
+                return false;
+            }
+            
+            // 计算时间差（秒）
+            long diffSeconds = java.time.Duration.between(endDateTime, now).getSeconds();
+            
+            // 如果当前时间减去结束时间大于逾期阈值秒数，则认为逾期
+            return diffSeconds > overdueThresholdSeconds;
+        } catch (Exception e) {
+            // 处理任何解析错误，默认不逾期
+            return false;
+        }
+    }
 
+    /**
+     * 获取完整的开始时间
+     * @return 完整的开始时间LocalDateTime，如果解析失败或time为null则返回null
+     */
+    @JsonIgnore
+    public LocalDateTime getStartTime() {
+        Time time = this.getTime();
+        return time != null ? time.getStartTime(this.listId) : null;
+    }
+    
+    /**
+     * 获取完整的结束时间
+     * @return 完整的结束时间LocalDateTime，如果解析失败或time为null则返回null
+     */
+    @JsonIgnore
+    public LocalDateTime getEndTime() {
+        Time time = this.getTime();
+        return time != null ? time.getEndTime(this.listId) : null;
+    }
+
+    public LocalDate getDate() {
+        // 使用 java.time 的 DateTimeFormatter 解析 listId：20251010 返回日期
+        if (this.listId == null || this.listId.length() != 8) {
+            return null;
+        }
+        try {
+            java.time.format.DateTimeFormatter formatter = java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd");
+            return java.time.LocalDate.parse(this.listId, formatter);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+        
     // 内部类：子任务
     public static class SubTodo implements CheckStatus {
         /**
@@ -170,6 +240,13 @@ public class Todo implements CheckStatus, Comparable<Todo> {
         public boolean checkCompleted() {
             return this.checked == 1;
         }
+        
+        @Override
+        @JsonIgnore
+        public boolean checkOverdue(long overdueThresholdSeconds) {
+            // 子任务没有时间信息，所以默认不逾期
+            return false;
+        }
     }
 
     // 内部类：时间
@@ -203,20 +280,23 @@ public class Todo implements CheckStatus, Comparable<Todo> {
         
         /**
          * 计算开始时间和结束时间之间的时间差，返回毫秒为单位的long值
+         * @param listId 日期字符串，格式如20251225
          * @return 时间差（毫秒），如果时间格式不正确或开始时间晚于结束时间则返回0
          */
-        public long calculateDurationMillis() {
+        public long calculateDurationMillis(String listId) {
             if (start == null || end == null) {
                 return 0;
             }
             
             try {
-                // 创建时间格式化器，处理"HH: mm"格式（注意中间有空格）
-                java.time.format.DateTimeFormatter formatter = java.time.format.DateTimeFormatter.ofPattern("HH:mm");
+                // 使用getStartTime和getEndTime方法获取完整的LocalDateTime对象
+                java.time.LocalDateTime startTime = getStartTime(listId);
+                java.time.LocalDateTime endTime = getEndTime(listId);
                 
-                // 解析开始时间和结束时间
-                java.time.LocalTime startTime = java.time.LocalTime.parse(start, formatter);
-                java.time.LocalTime endTime = java.time.LocalTime.parse(end, formatter);
+                // 检查解析是否成功
+                if (startTime == null || endTime == null) {
+                    return 0;
+                }
                 
                 // 计算时间差（以毫秒为单位）
                 java.time.Duration duration = java.time.Duration.between(startTime, endTime);
@@ -253,6 +333,58 @@ public class Todo implements CheckStatus, Comparable<Todo> {
             java.time.LocalTime startTime = java.time.LocalTime.parse(this.start, formatter);
             java.time.LocalTime endTime = java.time.LocalTime.parse(o.start, formatter);
             return startTime.compareTo(endTime);
+        }
+
+        /**
+         * 获取完整的开始时间
+         * @param listId 日期字符串，格式如20251225
+         * @return 完整的开始时间LocalDateTime，如果解析失败则返回null
+         */
+        public java.time.LocalDateTime getStartTime(String listId) {
+            return parseDateTime(listId, this.start != null ? this.start : null);
+        }
+        
+        /**
+         * 获取完整的结束时间
+         * @param listId 日期字符串，格式如20251225
+         * @return 完整的结束时间LocalDateTime，如果解析失败则返回null
+         */
+        public java.time.LocalDateTime getEndTime(String listId) {
+            return parseDateTime(listId, this.end != null ? this.end : null);
+        }
+        
+        /**
+         * 解析日期字符串和时间字符串为LocalDateTime
+         * @param listId 日期字符串，格式如20251225
+         * @param timeStr 时间字符串，格式如08:00
+         * @return 解析后的LocalDateTime，如果解析失败则返回null
+         */
+        private java.time.LocalDateTime parseDateTime(String listId, String timeStr) {
+            try {
+                // 检查参数有效性
+                if (listId == null || listId.length() != 8) {
+                    return null;
+                }
+                if (timeStr == null || timeStr.trim().isEmpty()) {
+                    return null;
+                }
+                
+                // 解析日期部分
+                int year = Integer.parseInt(listId.substring(0, 4));
+                int month = Integer.parseInt(listId.substring(4, 6));
+                int day = Integer.parseInt(listId.substring(6, 8));
+                
+                // 解析时间部分，先去除可能存在的空格
+                java.time.format.DateTimeFormatter timeFormatter = java.time.format.DateTimeFormatter.ofPattern("HH:mm");
+                String cleanTimeStr = timeStr.replaceAll("\\s+", "");
+                java.time.LocalTime time = java.time.LocalTime.parse(cleanTimeStr, timeFormatter);
+                
+                // 组合成完整的LocalDateTime
+                return java.time.LocalDateTime.of(year, month, day, time.getHour(), time.getMinute());
+            } catch (Exception e) {
+                // 处理任何解析错误，返回null
+                return null;
+            }
         }
     }
 

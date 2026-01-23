@@ -76,6 +76,17 @@ public class MyBatisPlusTodoRepository implements TodoRepository {
     }
 
     @Override
+    public Flux<Todo> findByTaskId(String taskId) {
+        return Mono.fromSupplier(() -> {
+            QueryWrapper<Todo> queryWrapper = new QueryWrapper<>();
+            queryWrapper.eq("task_id", taskId);
+            return todoMapper.selectList(queryWrapper);
+        })
+        .flatMapMany(Flux::fromIterable)
+        .subscribeOn(Schedulers.boundedElastic());
+    }
+
+    @Override
     public Mono<Todo> save(Todo todo) {
         // 设置创建时间和更新时间
         if (todo.getCreatedAt() == null) {
@@ -117,5 +128,31 @@ public class MyBatisPlusTodoRepository implements TodoRepository {
         })
         .subscribeOn(Schedulers.boundedElastic())
         .then();
+    }
+    
+    @Override
+    public Mono<Void> deleteByTaskId(String taskId) {
+        return Mono.fromRunnable(() -> {
+            QueryWrapper<Todo> queryWrapper = new QueryWrapper<>();
+            queryWrapper.eq("task_id", taskId);
+            todoMapper.delete(queryWrapper);
+        })
+        .subscribeOn(Schedulers.boundedElastic())
+        .then();
+    }
+    
+    @Override
+    public Flux<java.util.Map.Entry<String, Integer>> findByTaskIdAndListIdGreaterThanGroupByListId(String taskId, String listId) {
+        return Mono.fromSupplier(() -> {
+            QueryWrapper<Todo> queryWrapper = new QueryWrapper<>();
+            queryWrapper.eq("task_id", taskId)
+                       .ge("list_id", listId);
+            return todoMapper.selectList(queryWrapper);
+        })
+        .flatMapMany(Flux::fromIterable)
+        .groupBy(Todo::getListId)
+        .flatMap(groupedFlux -> groupedFlux.count().map(count -> 
+            (java.util.Map.Entry<String, Integer>) new java.util.AbstractMap.SimpleEntry<>(groupedFlux.key(), count.intValue())))
+        .subscribeOn(Schedulers.boundedElastic());
     }
 }

@@ -29,6 +29,13 @@ public interface TimeCacheService {
     long getMilestoneTotalTime(String milestoneId);
 
     /**
+     * 获取todo的总消耗时间（小时）
+     * @param todoId todo的ID
+     * @return 返回总消耗的小时数，如果没有记录则返回0
+     */
+    Mono<Double> getTodoTotalTimeInHours(String todoId);
+
+    /**
      * 增加todo的消耗时间
      * @param todoId todo的ID
      * @param milliseconds 要增加的毫秒数

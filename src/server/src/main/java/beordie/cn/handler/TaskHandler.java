@@ -1,5 +1,7 @@
 package beordie.cn.handler;
 
+import beordie.cn.dashboard.milestone.Statistics;
+import beordie.cn.dashboard.dto.DashboardResponse;
 import beordie.cn.model.Milestone;
 import beordie.cn.model.Task;
 import beordie.cn.service.MilestoneService;
@@ -144,6 +146,31 @@ public class TaskHandler {
     public Mono<ServerResponse> getTaskDashboardData(ServerRequest request) {
         return taskService.getTaskDashboardData()
                 .flatMap(dashboardData -> ServerResponse.ok()
-                        .body(Mono.just(dashboardData), java.util.Map.class));
+                        .body(Mono.just(dashboardData), DashboardResponse.class));
+    }
+
+    // 根据任务ID获取任务看板数据
+    public Mono<ServerResponse> getTaskDashboardDataByTaskId(ServerRequest request) {
+        String taskId = request.pathVariable("taskId");
+        return taskService.getTaskDashboardDataByTaskId(taskId)
+                .flatMap(dashboardData -> ServerResponse.ok()
+                        .body(Mono.just(dashboardData), DashboardResponse.class))
+                .switchIfEmpty(ServerResponse.notFound().build());
+    }
+
+    // 根据任务ID获取里程碑统计信息
+    public Mono<ServerResponse> getMilestoneStatisticsByTaskId(ServerRequest request) {
+        String taskId = request.pathVariable("taskId");
+        return milestoneService.getMilestoneStatistics(taskId)
+                .flatMap(statistics -> ServerResponse.ok()
+                        .body(Mono.just(statistics), Statistics.class));
+    }
+    
+    // 根据任务ID获取近一年的todos创建统计
+    public Mono<ServerResponse> getTodoCreationStatsByTaskId(ServerRequest request) {
+        String taskId = request.pathVariable("taskId");
+        return taskService.getTodoCreationStatsByTaskId(taskId)
+                .flatMap(stats -> ServerResponse.ok()
+                        .body(Mono.just(stats), int[].class));
     }
 }

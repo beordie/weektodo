@@ -1,33 +1,39 @@
 package beordie.cn.service;
 
+import beordie.cn.dashboard.dto.DashboardResponse;
+import beordie.cn.dashboard.dto.DashboardStat;
+import beordie.cn.dashboard.DashboardContext;
+import beordie.cn.dashboard.DashboardMetricCalculator;
+import beordie.cn.dashboard.DashboardScope;
+import beordie.cn.dashboard.TaskDashboardContext;
 import beordie.cn.handler.ConfigHandler;
 import beordie.cn.handler.ConfigHandler.TaskTimeConfig;
 import beordie.cn.model.Milestone;
 import beordie.cn.model.Task;
-import beordie.cn.model.Todo;
 import beordie.cn.repository.MilestoneRepository;
 import beordie.cn.repository.TaskRepository;
 import beordie.cn.repository.TodoRepository;
-import beordie.cn.service.TimeCacheService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
 @Service
 public class TaskService {
+    private static final Logger logger = LoggerFactory.getLogger(TaskService.class);
+    
     private final TaskRepository taskRepository;
     private final MilestoneRepository milestoneRepository;
     private final TodoRepository todoRepository;
     private final TimeCacheService timeCacheService;
+    @Autowired
+    private List<DashboardMetricCalculator> dashboardCalculators;
 
     @Autowired
     private ConfigHandler configHandler;
@@ -74,84 +80,65 @@ public class TaskService {
 
     /**
      * 获取任务整体大盘数据
-     * @return 包含任务统计信息的Map
+     * @return 包含任务统计信息的DashboardResponse
      */
-    public Mono<Map<String, Object>> getTaskDashboardData() {
+    public Mono<DashboardResponse> getTaskDashboardData() {
         LocalDateTime now = LocalDateTime.now();
-        
-        // 使用ConfigHandler获取时间阈值配置
         TaskTimeConfig taskTimeConfig = configHandler.getTaskTimeConfig();
-        int upcomingThresholdDays = taskTimeConfig.getUpcomingThresholdDays();
-        int overdueThresholdDays = taskTimeConfig.getOverdueThresholdDays();
-        
-        // 获取所有任务并进行统计
         return getAllTasks(null, null, null, null)
                 .collectList()
-                .flatMap(tasks -> {
-                    // 基础统计
-                    int totalTasks = tasks.size();
-                    AtomicInteger completedTasks = new AtomicInteger(0);
-                    AtomicInteger upcomingTasks = new AtomicInteger(0);
-                    AtomicInteger overdueTasks = new AtomicInteger(0);
-                    AtomicReference<Double> totalTodoTime = new AtomicReference<>(0.0);
-                    
-                    // 收集所有任务ID，用于批量查询时间
-                    List<String> taskIds = tasks.stream()
-                            .map(Task::getId)
+                .flatMap(tasks -> buildTaskTimeMap(tasks)
+                        .map(taskTimeMap -> new DashboardContext(tasks, now, taskTimeConfig, timeCacheService)))
+                .map(ctx -> {
+                    List<DashboardStat> stats = dashboardCalculators.stream()
+                            .peek(c -> logger.info("All metric id: {}", c.id()))
+                            .filter(c -> c.supports(DashboardScope.GLOBAL))
+                            .peek(c -> logger.info("Matched metric id: {}", c.id()))
+                            .sorted(Comparator.comparingInt(DashboardMetricCalculator::order))
+                            .map(c -> c.calculate(ctx))
                             .collect(Collectors.toList());
-                    
-                    // 收集任务时间统计
-                    Map<String, Double> taskTimeMap = new HashMap<>();
-                    
-                    // 查询每个任务的总时间
-                    return Flux.fromIterable(taskIds)
-                            .concatMap(taskId -> timeCacheService.getTaskTotalTimeInHours(taskId)
-                                    .map(time -> {
-                                        taskTimeMap.put(taskId, time);
-                                        return time;
-                                    }))
-                            .collectList()
-                            .map(timeList -> {
-                                // 遍历任务进行统计
-                                for (Task task : tasks) {
-                                    // 已完成任务统计
-                                    if (task.getCompleted() != null && task.getCompleted() == 1) {
-                                        completedTasks.incrementAndGet();
-                                    }
-                                    
-                                    // 时间相关统计
-                                    LocalDate endDate = task.getEndDate();
-                                    if (endDate != null) {
-                                        // 转换当前时间为LocalDate进行比较
-                                        LocalDate nowDate = now.toLocalDate();
-                                        // 逾期任务统计：任务未完成且当前时间超过结束时间加上逾期阈值
-                                        if ((task.getCompleted() == null || task.getCompleted() != 1) && endDate.isBefore(nowDate.minusDays(overdueThresholdDays))) {
-                                            overdueTasks.incrementAndGet();
-                                        }
-                                        
-                                        // 即将到期任务统计
-                                        if ((task.getCompleted() == null || task.getCompleted() != 1) && 
-                                            endDate.isAfter(nowDate) && 
-                                            endDate.isBefore(nowDate.plusDays(upcomingThresholdDays))) {
-                                            upcomingTasks.incrementAndGet();
-                                        }
-                                    }
-                                    
-                                    // 添加该任务的todo时间总和
-                                    totalTodoTime.updateAndGet(current -> current + taskTimeMap.getOrDefault(task.getId(), 0.0));
-                                }
-                                
-                                // 构建返回结果
-                                Map<String, Object> dashboardData = new HashMap<>();
-                                dashboardData.put("totalTasks", totalTasks);
-                                dashboardData.put("completedTasks", completedTasks.get());
-                                dashboardData.put("upcomingTasks", upcomingTasks.get());
-                                dashboardData.put("overdueTasks", overdueTasks.get());
-                                dashboardData.put("totalTodoTime", totalTodoTime.get());
-                                
-                                return dashboardData;
-                            });
+                    DashboardResponse resp = new DashboardResponse();
+                    resp.setDashboardStats(stats);
+                    return resp;
                 });
+    }
+
+    /**
+     * 根据任务ID获取任务看板数据
+     * @param taskId 任务ID
+     * @return 包含任务统计信息的DashboardResponse
+     */
+    public Mono<DashboardResponse> getTaskDashboardDataByTaskId(String taskId) {
+        TaskTimeConfig taskTimeConfig = configHandler.getTaskTimeConfig();
+        return getTaskById(taskId)
+                .flatMap(task -> todoRepository.findByTaskId(taskId).collectList()
+                .map(todos -> new TaskDashboardContext(todos, taskTimeConfig, timeCacheService))
+                .map(ctx -> {
+                    List<DashboardStat> stats = dashboardCalculators.stream()
+                            .peek(c -> logger.info("All metric id: {}", c.id()))
+                            .filter(c -> c.supports(DashboardScope.TASK))
+                            .peek(c -> logger.info("Matched metric id: {}", c.id()))
+                            .sorted(Comparator.comparingInt(DashboardMetricCalculator::order))
+                            .map(c -> c.calculate(ctx))
+                            .collect(Collectors.toList());
+                    DashboardResponse resp = new DashboardResponse();
+                    resp.setDashboardStats(stats);
+                    return resp;
+                }))
+                .switchIfEmpty(Mono.error(new IllegalArgumentException("任务不存在: " + taskId)));
+    }
+
+    private Mono<Map<String, Double>> buildTaskTimeMap(List<Task> tasks) {
+        List<String> ids = tasks.stream().map(Task::getId).collect(Collectors.toList());
+        Map<String, Double> map = new HashMap<>();
+        return Flux.fromIterable(ids)
+                .concatMap(id -> timeCacheService.getTaskTotalTimeInHours(id)
+                        .map(time -> {
+                            map.put(id, time);
+                            return time;
+                        }))
+                .collectList()
+                .map(list -> map);
     }
 
     public Mono<Task> createTask(Task task) {
@@ -311,5 +298,54 @@ public class TaskService {
 
     public Mono<Void> deleteTask(String id) {
         return taskRepository.deleteById(id);
+    }
+    
+    /**
+     * 统计指定taskId近一年的todos创建情况
+     * @param taskId 任务ID
+     * @return 按日期索引的创建数量统计数组（长度365，代表近一年每一天的创建数量）
+     */
+    public Mono<int[]> getTodoCreationStatsByTaskId(String taskId) {
+        // 获取从今天开始往前面数365天的开始日期，格式如：20250101
+        java.time.LocalDate today = java.time.LocalDate.now();
+        java.time.LocalDate oneYearAgo = today.minusDays(365);
+        String oneYearAgoStr = oneYearAgo.format(java.time.format.DateTimeFormatter.BASIC_ISO_DATE);
+        
+        // 创建一个长度为365的数组，初始值都为0
+        int[] stats = new int[365];
+        
+        // 使用新的查询方法，获取按listId分组的统计数据
+        return todoRepository.findByTaskIdAndListIdGreaterThanGroupByListId(taskId, oneYearAgoStr)
+                // 使用reduce操作符来累积统计结果，确保所有处理都完成
+                .reduce(stats, (result, entry) -> {
+                    String listId = entry.getKey(); // 格式如：20250101
+                    int count = entry.getValue();
+                    
+                    try {
+                        // 将listId转换为LocalDate
+                        java.time.LocalDate date = java.time.LocalDate.parse(listId, java.time.format.DateTimeFormatter.BASIC_ISO_DATE);
+                        // 计算距离一年前的天数差
+                        long daysDiff = java.time.temporal.ChronoUnit.DAYS.between(oneYearAgo, date);
+                        // 确保daysDiff在0-364范围内
+                        if (daysDiff >= 0 && daysDiff < 365) {
+                            // 在对应位置的数组元素上设置数量
+                            result[(int) daysDiff] = count;
+                        }
+                    } catch (Exception e) {
+                        // 如果日期解析失败，忽略该数据
+                        System.err.println("解析listId失败: " + listId + ", 错误: " + e.getMessage());
+                    }
+                    return result;
+                })
+                // 打印统计结果
+                .doOnNext(result -> {
+                    int nonZeroCount = 0;
+                    for (int i = 0; i < result.length; i++) {
+                        if (result[i] > 0) {
+                            nonZeroCount++;
+                        }
+                    }
+                    System.out.println("TaskService.getTodoCreationStatsByTaskId: 返回统计数据，非零值数量=" + nonZeroCount);
+                });
     }
 }

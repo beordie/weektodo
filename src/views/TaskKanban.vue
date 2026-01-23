@@ -33,43 +33,31 @@
 
     <!-- 统计卡片区域 -->
     <div class="statistics-section">
-      <div class="stat-card">
-        <h3>{{ $t('taskManagement.total') }}</h3>
-        <div class="stat-value">{{ recentTodos.length }}</div>
-        <div class="stat-change" :class="getTodoChangeClass('total')">
-          <i :class="getTodoChangeIcon('total')"></i> {{ getTodoChangeText('total') }}
-        </div>
+      <!-- 加载状态 -->
+      <div class="loading-container" v-if="loading">
+        <div class="loading-spinner"></div>
+        <p>加载统计数据中...</p>
       </div>
       
-      <div class="stat-card">
-        <h3>{{ $t('taskManagement.completed') }}</h3>
-        <div class="stat-value">{{ completedTodosCount }}</div>
-        <div class="stat-change hours-stat">
-          <i class="bi-clock"></i> {{ completedTasksTotalHours }}
-        </div>
+      <!-- 错误状态 -->
+      <div class="error-container" v-else-if="dashboardData && !dashboardData.dashboardStats">
+        <i class="bi-exclamation-triangle"></i>
+        <p>无法加载统计数据</p>
       </div>
       
-      <div class="stat-card">
-        <h3>{{ $t('taskManagement.pending') }}</h3>
-        <div class="stat-value">{{ pendingTodosCount }}</div>
-        <div class="stat-change" :class="getTodoChangeClass('pending')">
-          <i :class="getTodoChangeIcon('pending')"></i> {{ getTodoChangeText('pending') }}
-        </div>
+      <!-- 无数据状态 -->
+      <div class="no-data-container" v-else-if="dashboardData && dashboardData.dashboardStats.length === 0">
+        <i class="bi-info-circle"></i>
+        <p>暂无统计数据</p>
       </div>
       
-      <div class="stat-card">
-        <h3>本周新增</h3>
-        <div class="stat-value">{{ weeklyNewTodosCount }}</div>
-        <div class="stat-change" :class="getTodoChangeClass('weeklyNew')">
-          <i :class="getTodoChangeIcon('weeklyNew')"></i> {{ getTodoChangeText('weeklyNew') }}
-        </div>
-      </div>
-      
-      <div class="stat-card">
-        <h3>今日完成</h3>
-        <div class="stat-value">{{ todayCompletedTodosCount }}</div>
-        <div class="stat-change" :class="getTodoChangeClass('todayCompleted')">
-          <i :class="getTodoChangeIcon('todayCompleted')"></i> {{ getTodoChangeText('todayCompleted') }}
+      <!-- 统计卡片 -->
+      <div class="stat-card" v-else v-for="stat in dashboardData?.dashboardStats" :key="stat.id">
+        <h3>{{ stat.title }}</h3>
+        <div class="stat-value">{{ stat.value }}</div>
+        <div class="stat-change" :class="stat.footer?.type" v-if="stat.footer">
+          <i :class="stat.footer.icon" v-if="stat.footer.icon"></i> 
+          {{ stat.footer.text.replace('{}', stat.footer.diff || stat.value) }}
         </div>
       </div>
     </div>
@@ -443,6 +431,146 @@
 </template>
 
 <style scoped>
+/* 统计卡片区域样式 */
+.statistics-section {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 20px;
+  margin-bottom: 30px;
+  padding: 20px;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+}
+
+/* 加载状态样式 */
+.loading-container {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+  text-align: center;
+  color: #6c757d;
+}
+
+.loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid #f3f3f3;
+  border-top: 4px solid #007bff;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 15px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* 错误状态样式 */
+.error-container {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+  text-align: center;
+  color: #dc3545;
+  background-color: #fff5f5;
+  border-radius: 8px;
+  border: 1px solid #ffebee;
+}
+
+.error-container i {
+  font-size: 36px;
+  margin-bottom: 15px;
+}
+
+/* 无数据状态样式 */
+.no-data-container {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+  text-align: center;
+  color: #6c757d;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+  border: 1px dashed #dee2e6;
+}
+
+.no-data-container i {
+  font-size: 36px;
+  margin-bottom: 15px;
+}
+
+/* 统计卡片样式 */
+.stat-card {
+  background-color: white;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.stat-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+}
+
+.stat-card h3 {
+  margin-top: 0;
+  margin-bottom: 10px;
+  font-size: 14px;
+  color: #6c757d;
+  font-weight: 500;
+}
+
+.stat-value {
+  font-size: 32px;
+  font-weight: 700;
+  color: #333;
+  margin-bottom: 10px;
+}
+
+.stat-change {
+  font-size: 12px;
+  padding: 4px 8px;
+  border-radius: 12px;
+  display: inline-flex;
+  align-items: center;
+}
+
+.stat-change i {
+  margin-right: 4px;
+}
+
+/* footer type 样式 */
+.stat-change.increase {
+  background-color: #d4edda;
+  color: #155724;
+}
+
+.stat-change.decrease {
+  background-color: #f8d7da;
+  color: #721c24;
+}
+
+.stat-change.normal {
+  background-color: #d1ecf1;
+  color: #0c5460;
+}
+
+.stat-change.overdue {
+  background-color: #f8f9fa;
+  color: #6c757d;
+}
+
 /* 统计图表容器响应式布局 */
 .stats-charts-container {
   display: flex;
@@ -721,6 +849,7 @@
 <script>
 import moment from 'moment';
 import configAPI from '../helpers/api/configAPI';
+import taskAPI from '../helpers/api/taskAPI';
 
 export default {
   name: 'TaskKanban',
@@ -728,28 +857,25 @@ export default {
   
   // 监控任务相关数据变化
   watch: {
-    },
+    // 监听看板显示状态变化，当看板打开时重新加载数据
+    showTaskKanban(newValue, oldValue) {
+      console.log('🔍 看板显示状态变化:', oldValue, '→', newValue);
+      if (newValue && !oldValue && this.currentTaskId) {
+        console.log('📥 看板已打开，重新加载数据...');
+        this.loadDashboardData();
+        this.fetchMilestoneStats();
+      }
+    }
+  },
   
   // 生命周期钩子 - 组件挂载时加载任务数据
-    mounted() {
-      console.log('🚀 TaskKanban组件已挂载');
-      // 加载任务数据和任务分类
-      this.$store.dispatch('loadTasks').then(() => {
-        console.log('任务数据已加载');
-      }).catch(error => {
-        console.error('加载任务数据失败:', error);
-      });
-      
+  mounted() {
       // 从后端API获取分类数据
       this.loadCategoriesFromAPI();
-      
-      // 加载所有待办事项数据（仅在看板页面加载全部数据）
-      this.$store.dispatch('loadAllTodoLists').then(() => {
-        console.log('所有待办事项数据已加载');
-      }).catch(error => {
-        console.error('加载所有待办事项数据失败:', error);
-      });
-    },
+      // 不在这里调用loadDashboardData，避免与watch监听器冲突
+      // 当showTaskKanban状态变化时，watch监听器会自动调用loadDashboardData
+  },
+  
   data() {
     return {
       showModal: false,
@@ -760,6 +886,8 @@ export default {
       // dragSourceColumn: null,
       timeStatsPeriod: '7', // 默认显示近7天的完成时间统计
       selectedTrend: 'week_daily', // 默认趋势类型：七天内每天对比
+      dashboardData: null, // 存储从API获取的看板数据
+      loading: false, // 加载状态
       currentTask: {
         title: '',
         description: '',
@@ -772,12 +900,22 @@ export default {
         todos: [],
         milestones: []
       },
-      localCategories: [] // 本地存储API返回的分类数据
+      localCategories: [], // 本地存储API返回的分类数据
+      // 里程碑统计相关状态变量
+      milestoneStats: [], // 里程碑统计数据数组
+      totalMilestonesCount: 0, // 总里程碑数
+      averageMilestoneCompletionRate: 0, // 平均完成率
+      milestoneStatsLoading: false, // 里程碑统计数据加载状态
+      todoCreationStats: [], // 待办事项创建统计数据数组
+      todoStatsLoading: false // 待办事项统计数据加载状态
     };
   },
   computed: {
       currentTaskId() {
         return this.$store.getters.currentTaskId;
+      },
+      showTaskKanban() {
+        return this.$store.getters.showTaskKanban;
       },
       tasks() {
         // 如果有currentTaskId，只返回该任务对象
@@ -837,34 +975,7 @@ export default {
       pendingTodosCount() {
         return this.recentTodos.filter(todo => !todo.completed).length;
       },
-      // 本周新增待办事项数量
-      weeklyNewTodosCount() {
-        // 注意：getRecentTodos现在能够从listId中提取日期字符串生成真实时间戳
-        // 我们可以直接基于这些时间戳计算本周新增任务
-        
-        console.log('=== weeklyNewTodosCount 调试信息 ===');
-        console.log('recentTodos 长度:', this.recentTodos.length);
-        
-        // 获取本周的开始日期（周一）
-        const now = new Date();
-        const dayOfWeek = now.getDay() || 7; // 将周日(0)转换为7
-        const diff = now.getDate() - dayOfWeek + 1;
-        const weekStart = new Date(now);
-        weekStart.setDate(diff);
-        weekStart.setHours(0, 0, 0, 0);
-        
-        // 过滤出本周创建的任务
-        const weeklyNewTodos = this.recentTodos.filter(todo => {
-          const todoDate = new Date(todo.createdAt);
-          return todoDate >= weekStart;
-        });
-        
-        console.log('本周开始日期:', weekStart);
-        console.log('本周新增任务数量:', weeklyNewTodos.length);
-        console.log('====================================');
-        
-        return weeklyNewTodos.length;
-      },
+      
       // 今日完成待办事项数量
       todayCompletedTodosCount() {
         const today = new Date();
@@ -1171,96 +1282,7 @@ export default {
         // 向上取整到最近的整数
         return Math.ceil(max);
       },
-      // 里程碑相关计算属性
-      // 从任务中提取所有milestones
-      allMilestones() {
-        // 从所有任务中收集milestones
-        const milestonesSet = new Set();
-        
-        // 直接从当前任务中获取milestones（任务层面使用milestones数组）
-        console.log("任务：", this.currentTask)
-        if (this.tasks && this.tasks.milestones && Array.isArray(this.tasks.milestones)) {
-          this.tasks.milestones.forEach(milestone => {
-            if (milestone) {
-              // Handle both object format with title and completed properties
-              // and string format for backward compatibility
-              const milestoneTitle = typeof milestone === 'object' && milestone.title 
-                ? milestone.title 
-                : milestone;
-              
-              if (milestoneTitle && typeof milestoneTitle === 'string' && milestoneTitle.trim() !== '') {
-                milestonesSet.add(milestoneTitle.trim());
-              }
-            }
-          });
-        }
-        
-        // 如果当前任务没有milestones或为空，则从所有最近任务中收集（todo层面使用milestone单个字段）
-        if (milestonesSet.size === 0) {
-          this.getRecentTodos().forEach(todo => {
-            if (todo.milestone) {
-              // Handle both object format with title and completed properties
-              // and string format for backward compatibility
-              const milestoneTitle = typeof todo.milestone === 'object' && todo.milestone.title 
-                ? todo.milestone.title 
-                : todo.milestone;
-              
-              if (milestoneTitle && typeof milestoneTitle === 'string' && milestoneTitle.trim() !== '') {
-                milestonesSet.add(milestoneTitle.trim());
-              }
-            }
-          });
-        }
-        
-        return Array.from(milestonesSet);
-      },
-      // 里程碑完成状态统计
-      milestoneStats() {
-        const stats = [];
-        const recentTodos = this.getRecentTodos(); // 只调用一次
-        
-        this.allMilestones.forEach(milestone => {
-          // 统计包含该里程碑的任务总数（使用todo.milestone单个字段）
-          const totalTasks = recentTodos.filter(todo => {
-            if (!todo.milestone) return false;
-            // 支持对象和字符串格式的milestone
-            const todoMilestone = typeof todo.milestone === 'object' ? todo.milestone.title : todo.milestone;
-            return todoMilestone === milestone;
-          }).length;
-          
-          // 统计包含该里程碑且已完成的任务数（使用todo.milestone单个字段）
-          const completedTasks = recentTodos.filter(todo => {
-            if (!todo.completed || !todo.milestone) return false;
-            // 支持对象和字符串格式的milestone
-            const todoMilestone = typeof todo.milestone === 'object' ? todo.milestone.title : todo.milestone;
-            return todoMilestone === milestone;
-          }).length;
-          
-          // 计算完成百分比
-          const completionRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
-          
-          stats.push({
-            name: milestone,
-            totalTasks,
-            completedTasks,
-            pendingTasks: totalTasks - completedTasks,
-            completionRate
-          });
-        });
-        
-        return stats;
-      },
-      // 里程碑总数量
-      totalMilestonesCount() {
-        return this.allMilestones.length;
-      },
-      // 平均里程碑完成率
-      averageMilestoneCompletionRate() {
-        if (this.milestoneStats.length === 0) return 0;
-        
-        const totalRate = this.milestoneStats.reduce((sum, stat) => sum + stat.completionRate, 0);
-        return Math.round(totalRate / this.milestoneStats.length);
-      },
+
       // 生成折线图的坐标点
       timeStatsPoints() {
         const data = this.timeStatsData;
@@ -1485,6 +1507,101 @@ export default {
           this.$forceUpdate();
         });
     },
+    
+    // 获取里程碑统计数据
+    fetchMilestoneStats() {
+      console.log('🔍 开始从API获取里程碑统计数据，taskId:', this.currentTaskId);
+      
+      // 检查currentTaskId是否存在
+      if (!this.currentTaskId) {
+        console.warn('⚠️ 没有选中的任务ID，无法获取里程碑统计数据');
+        return;
+      }
+      
+      this.milestoneStatsLoading = true;
+      taskAPI.getMilestoneStatistics(this.currentTaskId)
+        .then(response => {
+          console.log('📊 里程碑统计数据已从API获取:', response);
+          if (response) {
+            // 适配后端返回的数据格式：{ summary: { total, averageCompletionRate }, milestones: [...] }
+            this.milestoneStats = (response.milestones || []).map(milestone => ({
+              ...milestone,
+              // 转换字段名以适配前端表格
+              totalTasks: milestone.totalTodos,
+              completedTasks: milestone.completedTodos,
+              pendingTasks: milestone.pendingTodos
+            }));
+            this.totalMilestonesCount = response.summary?.total || 0;
+            this.averageMilestoneCompletionRate = response.summary?.averageCompletionRate || 0;
+          }
+        })
+        .catch(error => {
+          console.error('❌ 获取里程碑统计数据失败:', error);
+          // 发生错误时重置数据
+          this.milestoneStats = [];
+          this.totalMilestonesCount = 0;
+          this.averageMilestoneCompletionRate = 0;
+        })
+        .finally(() => {
+          this.milestoneStatsLoading = false;
+        });
+    },
+    
+    // 获取待办事项创建统计数据
+    fetchTodoCreationStats() {
+      console.log('🔍 开始从API获取待办事项创建统计数据，taskId:', this.currentTaskId);
+      
+      // 检查currentTaskId是否存在
+      if (!this.currentTaskId) {
+        console.warn('⚠️ 没有选中的任务ID，无法获取待办事项创建统计数据');
+        return;
+      }
+      
+      this.todoStatsLoading = true;
+      taskAPI.getTodoCreationStats(this.currentTaskId)
+        .then(response => {
+          console.log('📊 待办事项创建统计数据已从API获取:', response);
+          if (response && Array.isArray(response)) {
+            this.todoCreationStats = response;
+          }
+        })
+        .catch(error => {
+          console.error('❌ 获取待办事项创建统计数据失败:', error);
+          // 发生错误时重置数据
+          this.todoCreationStats = [];
+        })
+        .finally(() => {
+          this.todoStatsLoading = false;
+        });
+    },
+    
+    // 从后端API获取看板数据
+    loadDashboardData() {
+      console.log('🔍 开始从API获取看板数据，taskId:', this.currentTaskId);
+      
+      // 检查currentTaskId是否存在
+      if (!this.currentTaskId) {
+        console.warn('⚠️ 没有选中的任务ID，无法获取看板数据');
+        this.loading = false;
+        return;
+      }
+      
+      this.loading = true;
+      taskAPI.getTaskDashboardDataByTaskId(this.currentTaskId)
+        .then(response => {
+          console.log('📊 看板数据已从API获取:', response);
+          this.dashboardData = response;
+          this.loading = false;
+        })
+        .catch(error => {
+          console.error('❌ 获取看板数据失败:', error);
+          this.loading = false;
+          // 可以在这里添加错误处理逻辑，例如显示错误提示
+        });
+        
+      // 获取待办事项创建统计数据
+      this.fetchTodoCreationStats();
+    },
     // 解析任务的时间信息并格式化为显示字符串
     formatTaskTime(task) {
       // 检查任务是否有有效的时间信息
@@ -1525,64 +1642,12 @@ export default {
     
     // 获取最近待办项
     getRecentTodos() {
-      
-      const allTodos = [];
-      // 只有当tasks不为null时才更新currentTask，避免覆盖默认值
-      if (this.tasks !== null) {
-        this.currentTask = this.tasks;
+      // 如果dashboardData存在且包含待办项数据，则返回
+      if (this.dashboardData && this.dashboardData.todos) {
+        return this.dashboardData.todos;
       }
-      
-      // 遍历todoLists对象的所有列表
-      Object.entries(this.todoLists).forEach(([listId, todoItems]) => {
-        if (Array.isArray(todoItems) && todoItems.length > 0) {
-          // 遍历该列表中的每个待办项
-          todoItems.forEach((todo, index) => {
-            if (todo && todo.text) {
-              // 使用列表ID和索引作为时间戳的一部分，确保排序稳定
-              // 直接使用listId作为日期字符串解析时间（格式如：20251023）
-              const dateStr = listId.replace(/\D/g, '');
-              let timestamp;
-              
-              if (dateStr.length === 8) { // 格式：YYYYMMDD
-                const year = dateStr.substring(0, 4);
-                const month = dateStr.substring(4, 6) - 1; // 月份从0开始
-                const day = dateStr.substring(6, 8);
-                timestamp = new Date(year, month, day).getTime();
-              } else {
-                // 如果不是日期格式，则使用原来的方式
-                timestamp = new Date().getTime() - (parseInt(dateStr, 10) || 0) * 1000 - index;
-              }
-              const itemTaskId = todo.task || listId;
-              
-              // 修复条件判断，避免currentTask为空时报错
-              const shouldAddTodo = this.currentTask && this.currentTask.title 
-                ? this.currentTask.title === itemTaskId 
-                : true; // 如果currentTask不存在，返回所有待办项
-                
-              if (shouldAddTodo) {
-                
-                allTodos.push({
-                  id: `${listId}_todo_${index}`,
-                  title: todo.text,
-                  taskId: itemTaskId,
-                  createdAt: new Date(timestamp).toISOString(),
-                  completed: todo.checked === 1 ? 1 : 0,
-                  alarm: todo.alarm || false, // 兼容checked和completed两种状态字段
-                  listId: listId,
-                  time: todo.time || {}, // 确保time存在，避免后续操作报错
-                  desc: todo.desc || '', // 确保desc存在，避免后续操作报错
-                  subtasks: todo.subTaskList && Array.isArray(todo.subTaskList) ? todo.subTaskList.map(subTask => subTask.text) : [], // 从subTaskList中提取text字段到subtasks数组
-                  milestone: todo.milestone || '', // 添加milestone字段，从原始todo数据中获取
-                });
-              }
-            }
-          });
-        }
-      });
-      
-      // 按创建时间排序并返回所有任务
-      return allTodos
-        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+      // 如果没有数据，返回空数组
+      return [];
     },
     
     // 获取最近待办项（限制为10条）
@@ -1610,31 +1675,30 @@ export default {
     
     // 根据日期获取当天完成的任务数量
     getCompletedTasksByDate(date) {
+      // 如果API数据还没加载，返回0
+      if (!this.todoCreationStats || this.todoCreationStats.length === 0) {
+        return 0;
+      }
+      
       const targetDate = new Date(date);
       targetDate.setHours(0, 0, 0, 0);
       
-      // 检查是否有未完成的任务
-      const hasPendingTasks = this.getRecentTodos().some(todo => {
-        if (todo.completed) return false;
-        
-        const todoDate = new Date(todo.createdAt);
-        todoDate.setHours(0, 0, 0, 0);
-        
-        return targetDate.getTime() === todoDate.getTime();
-      });
+      // 计算一年前的今天
+      const oneYearAgo = new Date();
+      oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+      oneYearAgo.setHours(0, 0, 0, 0);
       
-      // 如果有未完成任务，直接返回-1
-      if (hasPendingTasks) return -1;
+      // 计算目标日期距离一年前的天数差
+      const timeDiff = targetDate.getTime() - oneYearAgo.getTime();
+      const dayDiff = Math.floor(timeDiff / (1000 * 3600 * 24));
       
-      // 否则返回完成任务数量
-      return this.getRecentTodos().filter(todo => {
-        if (!todo.completed) return false;
-        
-        const todoDate = new Date(todo.createdAt);
-        todoDate.setHours(0, 0, 0, 0);
-        
-        return targetDate.getTime() === todoDate.getTime();
-      }).length;
+      // 如果日期超出了近一年的范围，返回0
+      if (dayDiff < 0 || dayDiff >= 365) {
+        return 0;
+      }
+      
+      // 从API返回的数组中获取对应日期的任务数量
+      return this.todoCreationStats[dayDiff] || 0;
     },
     
     // 根据任务数量确定提交级别（颜色深浅）
@@ -1684,47 +1748,6 @@ export default {
         day: 'numeric'
       });
       return `${formattedDate}\n${count}个任务`;
-    },
-    
-    // 获取统计数据变化样式类
-    getTodoChangeClass(type) {
-      const thisWeekStats = this.getThisWeekStats();
-      const lastWeekStats = this.getLastWeekStats();
-      const todayCompleted = this.todayCompletedTodosCount;
-      const yesterdayCompleted = this.getYesterdayCompletedCount();
-      
-      let diff = 0;
-      
-      switch (type) {
-        case 'total':
-          diff = thisWeekStats.total - lastWeekStats.total;
-          break;
-        case 'completed':
-          diff = thisWeekStats.completed - lastWeekStats.completed;
-          break;
-        case 'pending':
-          diff = thisWeekStats.pending - lastWeekStats.pending;
-          break;
-        case 'weeklyNew':
-          diff = thisWeekStats.weeklyNew - lastWeekStats.weeklyNew;
-          break;
-        case 'todayCompleted':
-          diff = todayCompleted - yesterdayCompleted;
-          break;
-      }
-      
-      if (diff > 0) return 'increase';
-      if (diff < 0) return 'decrease';
-      return 'neutral';
-    },
-    
-    // 获取统计数据变化图标
-    getTodoChangeIcon(type) {
-      const changeClass = this.getTodoChangeClass(type);
-      
-      if (changeClass === 'increase') return 'fas fa-arrow-up';
-      if (changeClass === 'decrease') return 'fas fa-arrow-down';
-      return 'fas fa-minus';
     },
     
     // 获取上周同期的任务统计数据
@@ -1805,54 +1828,6 @@ export default {
         const createdAt = new Date(todo.createdAt);
         return createdAt >= yesterdayStart && createdAt <= yesterdayEnd;
       }).length;
-    },
-    
-    // 获取统计数据变化文本
-    getTodoChangeText(type) {
-      const thisWeekStats = this.getThisWeekStats();
-      const lastWeekStats = this.getLastWeekStats();
-      const todayCompleted = this.todayCompletedTodosCount;
-      const yesterdayCompleted = this.getYesterdayCompletedCount();
-      
-      switch (type) {
-        case 'total': {
-          const totalDiff = thisWeekStats.total - lastWeekStats.total;
-          if (totalDiff > 0) return `较上周增加 ${totalDiff} 个`;
-          if (totalDiff < 0) return `较上周减少 ${Math.abs(totalDiff)} 个`;
-          return '与上周持平';
-        }
-        
-        case 'completed': {
-          const completedDiff = thisWeekStats.completed - lastWeekStats.completed;
-          if (completedDiff > 0) return `较上周增加 ${completedDiff} 个`;
-          if (completedDiff < 0) return `较上周减少 ${Math.abs(completedDiff)} 个`;
-          return '与上周持平';
-        }
-        
-        case 'pending': {
-          const pendingDiff = thisWeekStats.pending - lastWeekStats.pending;
-          if (pendingDiff > 0) return `较上周增加 ${pendingDiff} 个`;
-          if (pendingDiff < 0) return `较上周减少 ${Math.abs(pendingDiff)} 个`;
-          return '与上周持平';
-        }
-        
-        case 'weeklyNew': {
-          const newDiff = thisWeekStats.weeklyNew - lastWeekStats.weeklyNew;
-          if (newDiff > 0) return `较上周增加 ${newDiff} 个`;
-          if (newDiff < 0) return `较上周减少 ${Math.abs(newDiff)} 个`;
-          return '与上周持平';
-        }
-        
-        case 'todayCompleted': {
-          const todayDiff = todayCompleted - yesterdayCompleted;
-          if (todayDiff > 0) return `较昨日增加 ${todayDiff} 个`;
-          if (todayDiff < 0) return `较昨日减少 ${Math.abs(todayDiff)} 个`;
-          return '与昨日持平';
-        }
-        
-        default:
-          return '数据更新中';
-      }
     },
     
     // 切换任务完成状态（已禁用，保持纯查看模式）

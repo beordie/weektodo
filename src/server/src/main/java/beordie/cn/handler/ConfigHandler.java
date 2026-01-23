@@ -1,5 +1,6 @@
 package beordie.cn.handler;
 
+import beordie.cn.dashboard.DashboardScope;
 import lombok.Getter;
 import lombok.Setter;
 import org.springframework.boot.context.properties.ConfigurationProperties;
@@ -134,6 +135,24 @@ public class ConfigHandler {
         private int overdueThresholdDays;
         // 即将到期阈值（天）
         private int upcomingThresholdDays;
+        // 逾期事项阈值（秒）
+        private int overdueThresholdSeconds;
+
+        /**
+         * 获取逾期事项阈值（秒）
+         * @return 逾期事项阈值（秒）
+         */
+        public int getOverdueThresholdSeconds() {
+            return overdueThresholdSeconds;
+        }
+
+        /**
+         * 设置逾期事项阈值（秒）
+         * @param overdueThresholdSeconds 逾期事项阈值（秒）
+         */
+        public void setOverdueThresholdSeconds(int overdueThresholdSeconds) {
+            this.overdueThresholdSeconds = overdueThresholdSeconds;
+        }
 
         /**
          * 获取逾期时间阈值
@@ -166,6 +185,113 @@ public class ConfigHandler {
         public void setUpcomingThresholdDays(int upcomingThresholdDays) {
             this.upcomingThresholdDays = upcomingThresholdDays;
         }
+    }
+
+    public static class DashboardFooterConfig {
+        private String type;
+        private String template;
+        private String color;
+        private String icon;
+        public String getType() {
+            return type;
+        }
+
+        public void setType(String type) {
+            this.type = type;
+        }
+
+        public String getTemplate() {
+            return template;
+        }
+
+        public void setTemplate(String template) {
+            this.template = template;
+        }
+
+        public String getColor() {
+            return color;
+        }
+
+        public void setColor(String color) {
+            this.color = color;
+        }
+
+        public String getIcon() {
+            return icon;
+        }
+
+        public void setIcon(String icon) {
+            this.icon = icon;
+        }
+    }
+
+    public static class DashboardMetricConfig {
+        private String title;
+        private Integer order;
+        private DashboardScope scope;
+        private List<DashboardFooterConfig> footers;
+
+        public DashboardFooterConfig getFooter(String type) {
+            return this.getFooters().stream().filter(footer -> footer != null && footer.getType() != null && footer.getType().equals(type)).findFirst().orElse(null);
+        }
+
+        public String getTitle() {
+            return title;
+        }
+
+        public void setTitle(String title) {
+            this.title = title;
+        }
+
+        public Integer getOrder() {
+            return order;
+        }
+
+        public void setOrder(Integer order) {
+            this.order = order;
+        }
+
+        public DashboardScope getScope() {
+            return scope;
+        }
+
+        public void setScope(DashboardScope scope) {
+            this.scope = scope;
+        }
+
+        public List<DashboardFooterConfig> getFooters() {
+            return footers;
+        }
+
+        public void setFooters(List<DashboardFooterConfig> footers) {
+            this.footers = footers;
+        }
+    }
+
+    public static class DashboardConfig {
+        private Map<String, DashboardMetricConfig> metrics;
+
+        public Map<String, DashboardMetricConfig> getMetrics() {
+            return metrics;
+        }
+
+        public void setMetrics(Map<String, DashboardMetricConfig> metrics) {
+            this.metrics = metrics;
+        }
+    }
+
+    private DashboardConfig dashboard;
+
+    public Map<String, DashboardMetricConfig> getDashboardMetrics() {
+        return dashboard != null ? dashboard.getMetrics() : null;
+    }
+
+    public DashboardConfig getDashboard() {
+        return dashboard;
+    }
+
+    public void setDashboard(DashboardConfig dashboard) {
+        this.dashboard = dashboard;
     }
 
     /**

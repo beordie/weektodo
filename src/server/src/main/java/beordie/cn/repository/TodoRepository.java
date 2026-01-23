@@ -23,6 +23,9 @@ public interface TodoRepository {
     // 根据里程碑ID获取待办事项
     Flux<Todo> findByMilestoneId(String milestoneId);
     
+    // 根据任务ID获取待办事项
+    Flux<Todo> findByTaskId(String taskId);
+    
     // 保存待办事项
     Mono<Todo> save(Todo todo);
     
@@ -34,4 +37,10 @@ public interface TodoRepository {
     
     // 根据列表ID删除待办事项
     Mono<Void> deleteByListId(String listId);
+    
+    // 根据任务ID删除待办事项
+    Mono<Void> deleteByTaskId(String taskId);
+    
+    // 根据任务ID和listId范围查询待办事项并按listId分组统计数量
+    Flux<java.util.Map.Entry<String, Integer>> findByTaskIdAndListIdGreaterThanGroupByListId(String taskId, String listId);
 }

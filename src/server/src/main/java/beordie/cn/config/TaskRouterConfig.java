@@ -32,6 +32,7 @@ public class TaskRouterConfig {
                 .route(GET("/api/tasks").and(accept(APPLICATION_JSON)), taskHandler::getAllTasks)
                 // 获取任务整体大盘数据
                 .andRoute(GET("/api/tasks/dashboard").and(accept(APPLICATION_JSON)), taskHandler::getTaskDashboardData)
+                .andRoute(GET("/api/tasks/{taskId}/dashboard").and(accept(APPLICATION_JSON)), taskHandler::getTaskDashboardDataByTaskId)
                 // 根据ID获取任务
                 .andRoute(GET("/api/tasks/{id}").and(accept(APPLICATION_JSON)), taskHandler::getTaskById)
                 // 创建任务
@@ -44,6 +45,10 @@ public class TaskRouterConfig {
                 .andRoute(DELETE("/api/tasks/{id}"), taskHandler::deleteTask)
                 // 任务里程碑相关路由
                 .andRoute(GET("/api/tasks/{taskId}/milestones").and(accept(APPLICATION_JSON)), taskHandler::getMilestonesByTaskId)
+                // 获取指定任务的里程碑统计信息 - 放在milestoneId路由之前，避免冲突
+                .andRoute(GET("/api/tasks/{taskId}/milestones/statistics").and(accept(APPLICATION_JSON)), taskHandler::getMilestoneStatisticsByTaskId)
+                // 获取指定任务的todos创建统计信息
+                .andRoute(GET("/api/tasks/{taskId}/todos/stats").and(accept(APPLICATION_JSON)), taskHandler::getTodoCreationStatsByTaskId)
                 .andRoute(GET("/api/tasks/{taskId}/milestones/{milestoneId}").and(accept(APPLICATION_JSON)), taskHandler::getMilestoneByTaskIdAndId)
                 .andRoute(POST("/api/tasks/{taskId}/milestones")
                         .and(contentType(APPLICATION_JSON)), taskHandler::createMilestone)

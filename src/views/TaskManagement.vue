@@ -585,7 +585,6 @@
 
 <script>
 import moment from 'moment';
-import taskRepository from '../repositories/taskRepository';
 import configAPI from '../helpers/api/configAPI';
 import taskAPI from '../helpers/api/taskAPI';
 
@@ -685,6 +684,14 @@ export default {
     },
     sortOrder() {
       this.loadTasksFromAPI();
+    },
+    // 监听 store 中的 showTaskManagement 状态变化，确保每次从菜单点击进入时重新加载数据
+    '$store.getters.showTaskManagement'(newValue, oldValue) {
+      if (newValue && !oldValue) {
+        // 当组件从隐藏变为显示时，重新加载所有数据
+        this.loadTasksFromAPI();
+        this.loadDashboardData();
+      }
     }
   },
   mounted() {
@@ -698,6 +705,11 @@ export default {
     this.loadPrioritiesFromAPI();
     
     // 从后端API获取仪表盘数据
+    this.loadDashboardData();
+  },
+  activated() {
+    // 当组件被激活时(每次从菜单点击进入)重新加载所有数据
+    this.loadTasksFromAPI();
     this.loadDashboardData();
   },
   methods: {
@@ -739,8 +751,16 @@ export default {
       this.loadingDashboardData = true;
       taskAPI.getTaskDashboardData()
         .then(response => {
-          if (response) {
-            this.dashboardData = response;
+          if (response && response.dashboardStats) {
+            // 将新的DashboardResponse格式转换为前端期望的旧格式
+            const dashboardStats = response.dashboardStats;
+            this.dashboardData = {
+              completedTasks: dashboardStats.find(stat => stat.id === 'completed')?.value || 0,
+              overdueTasks: dashboardStats.find(stat => stat.id === 'overdue_tasks')?.value || 0,
+              upcomingTasks: dashboardStats.find(stat => stat.id === 'upcoming_tasks')?.value || 0,
+              totalTasks: dashboardStats.find(stat => stat.id === 'total_tasks')?.value || 0,
+              totalTodoTime: dashboardStats.find(stat => stat.id === 'total_todo_time')?.value || 0
+            };
             // 手动触发视图更新
             this.$forceUpdate();
           } else {
@@ -887,8 +907,9 @@ export default {
           // 由于notifications模块没有showToast方法，暂时省略通知
         }
         
-        // 保存成功后重新加载任务列表
+        // 保存成功后重新加载任务列表和仪表盘数据
         this.loadTasksFromAPI();
+        this.loadDashboardData();
         this.closeModal();
       } catch (error) {
         console.error('保存任务失败:', error);
@@ -919,41 +940,10 @@ export default {
       // Update the showTaskKanban state - use the correct mutation from tasks store
       this.$store.commit('showTaskKanban', true);
       
-      // Get the task from store
-      const task = this.tasks[taskId];
-      console.log('Found task:', task);
-      
-      // Set active task using the correct mutation from tasks store
-      if (task) {
-        this.$store.commit('setActiveTask', taskId);
-        
-        // Find related todos from todoLists
-        const relatedTodos = [];
-        console.log('Scanning todoLists for taskId:', taskId);
-        
-        Object.entries(this.$store.state.todoLists || {}).forEach(([listId, todos]) => {
-          if (todos && Array.isArray(todos)) {
-            const taskTodos = todos.filter(todo => 
-              todo && (todo.task === taskId || listId === taskId)
-            );
-            if (taskTodos.length > 0) {
-              console.log(`Found ${taskTodos.length} todos in list ${listId}`);
-              relatedTodos.push(...taskTodos);
-            }
-          }
-        });
-        
-        console.log('Total related todos found:', relatedTodos.length);
-        
-        // Also check if task has todos property as backup
-        if (task.todos && Array.isArray(task.todos)) {
-          console.log(`Task has ${task.todos.length} todos in its own property`);
-        }
-      } else {
-        console.error('Task not found in store');
-      }
-      
+      // Hide task management page
       this.$store.commit('showTaskManagement', false);
+      
+      // Kanban page will fetch data from backend based on taskId
     },
     
     // 删除任务
@@ -964,8 +954,9 @@ export default {
           .then(() => {
             // 删除成功，可以添加成功提示
             console.log('Task deleted successfully');
-            // 重新加载任务列表以显示最新状态
+            // 重新加载任务列表和仪表盘数据以显示最新状态
             this.loadTasksFromAPI();
+            this.loadDashboardData();
           })
           .catch(error => {
             // 删除失败，恢复本地状态并显示错误信息
@@ -973,22 +964,32 @@ export default {
             // 这里可以添加错误提示，例如使用toast组件
             alert(this.$t('taskManagement.deleteTaskError'));
             
-            // 重新加载任务列表以恢复正确的状态
+            // 重新加载任务列表和仪表盘数据以恢复正确的状态
             this.loadTasksFromAPI();
+            this.loadDashboardData();
           });
       }
     },
     
     // 切换任务完成状态
     toggleTaskCompletion(taskId) {
-      const task = this.tasks[taskId];
+      // 查找当前任务
+      const task = this.tasks.find(t => t.id === taskId);
+      if (!task) return;
+      
       const updatedTask = { ...task, completed: task.completed === 1 ? 0 : 1 };
       
-      this.$store.commit('updateTask', {
-        taskId,
-        updates: updatedTask,
-      });
-      taskRepository.update(taskId, updatedTask);
+      // 调用API更新任务状态
+      taskAPI.updateTask(taskId, updatedTask)
+        .then(() => {
+          console.log('Task completion status updated successfully');
+          // 重新加载任务列表和仪表盘数据以显示最新状态
+          this.loadTasksFromAPI();
+          this.loadDashboardData();
+        })
+        .catch(error => {
+          console.error('Failed to update task completion status:', error);
+        });
     },
     
     // 检查任务是否逾期

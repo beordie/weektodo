@@ -39,7 +39,8 @@ public class TodoService {
     // 获取所有待办事项
     public Flux<Todo> getAllTodos() {
         return todoRepository.findAll()
-                .flatMap(this::setTaskTitleForTodo);
+                .flatMap(this::setTaskTitleForTodo)
+                .sort();
     }
 
     // 根据ID获取待办事项
@@ -51,25 +52,29 @@ public class TodoService {
     // 根据列表ID获取待办事项
     public Flux<Todo> getTodosByListId(String listId) {
         return todoRepository.findByListId(listId)
-                .flatMap(this::setTaskTitleForTodo);
+                .flatMap(this::setTaskTitleForTodo)
+                .sort();
     }
 
     // 根据任务获取待办事项
     public Flux<Todo> getTodosByTask(String task) {
         return todoRepository.findByTask(task)
-                .flatMap(this::setTaskTitleForTodo);
+                .flatMap(this::setTaskTitleForTodo)
+                .sort();
     }
 
     // 根据里程碑获取待办事项
     public Flux<Todo> getTodosByMilestone(String milestone) {
         return todoRepository.findByMilestone(milestone)
-                .concatMap(this::setTaskTitleForTodo);
+                .concatMap(this::setTaskTitleForTodo)
+                .sort();
     }
 
     // 根据里程碑ID获取待办事项
     public Flux<Todo> getTodosByMilestoneId(String milestoneId) {
         return todoRepository.findByMilestoneId(milestoneId)
-                .flatMap(this::setTaskTitleForTodo);
+                .flatMap(this::setTaskTitleForTodo)
+                .sort();
     }
 
     // 创建待办事项

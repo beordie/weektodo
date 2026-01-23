@@ -19,7 +19,7 @@ public class TodoTest {
         time.setStart("08: 00");
         time.setEnd("09: 00");
         
-        long duration = time.calculateDurationMillis();
+        long duration = time.calculateDurationMillis("20251225");
         
         // 预期结果：1小时 = 3,600,000毫秒
         assertEquals(3600000L, duration);
@@ -31,7 +31,7 @@ public class TodoTest {
         time.setStart("08: 00");
         time.setEnd("09: 00");
         
-        long duration = time.calculateDurationMillis();
+        long duration = time.calculateDurationMillis("20251225");
         
         // 预期结果：1小时 = 3,600,000毫秒
         assertEquals(3600000L, duration);
@@ -43,7 +43,7 @@ public class TodoTest {
         time.setStart("08: 00");
         time.setEnd("08: 05");
         
-        long duration = time.calculateDurationMillis();
+        long duration = time.calculateDurationMillis("20251225");
         
         // 预期结果：5分钟 = 300,000毫秒
         assertEquals(300000L, duration);
@@ -55,7 +55,7 @@ public class TodoTest {
         time.setStart(null);
         time.setEnd("09:00");
         
-        long duration = time.calculateDurationMillis();
+        long duration = time.calculateDurationMillis("20251225");
         
         // 预期结果：0
         assertEquals(0L, duration);
@@ -67,7 +67,7 @@ public class TodoTest {
         time.setStart("08:00");
         time.setEnd(null);
         
-        long duration = time.calculateDurationMillis();
+        long duration = time.calculateDurationMillis("20251225");
         
         // 预期结果：0
         assertEquals(0L, duration);
@@ -79,7 +79,7 @@ public class TodoTest {
         time.setStart("08:00:00"); // 带秒的格式
         time.setEnd("09:00:00");
         
-        long duration = time.calculateDurationMillis();
+        long duration = time.calculateDurationMillis("20251225");
         
         // 预期结果：0（格式错误）
         assertEquals(0L, duration);
@@ -91,7 +91,7 @@ public class TodoTest {
         time.setStart("09:00");
         time.setEnd("08:00");
         
-        long duration = time.calculateDurationMillis();
+        long duration = time.calculateDurationMillis("20251225");
         
         // 预期结果：0（开始时间晚于结束时间）
         assertEquals(0L, duration);

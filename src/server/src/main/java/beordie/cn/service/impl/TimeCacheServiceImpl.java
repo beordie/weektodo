@@ -18,6 +18,22 @@ import java.time.Duration;
  */
 @Service
 public class TimeCacheServiceImpl implements TimeCacheService {
+
+    /**
+     * 获取todo的总消耗时间（小时）
+     * @param todoId todo的ID
+     * @return Mono<Double> 返回总消耗的小时数，保留两位小数，如果没有记录则返回0
+     */
+    @Override
+    public Mono<Double> getTodoTotalTimeInHours(String todoId) {
+        // 转换毫秒为小时（1小时 = 3600000毫秒）
+        long totalMilliseconds = timeCacheStoreService.getTodoTotalTime(todoId);
+        double totalHours = totalMilliseconds / 3600000.0;
+        // 保留两位小数
+        double formattedHours = Math.round(totalHours * 100.0) / 100.0;
+        return Mono.just(formattedHours);
+    }
+
     private final TimeCacheStoreService timeCacheStoreService;
 
     @Autowired
@@ -48,14 +64,16 @@ public class TimeCacheServiceImpl implements TimeCacheService {
     /**
      * 获取任务的总消耗时间（小时）
      * @param taskId 任务的ID
-     * @return Mono<Double> 返回总消耗的小时数，如果没有记录则返回0
+     * @return Mono<Double> 返回总消耗的小时数，保留两位小数，如果没有记录则返回0
      */
     @Override
     public Mono<Double> getTaskTotalTimeInHours(String taskId) {
         // 转换毫秒为小时（1小时 = 3600000毫秒）
         long totalMilliseconds = getTaskTotalTime(taskId);
         double totalHours = totalMilliseconds / 3600000.0;
-        return Mono.just(totalHours);
+        // 保留两位小数
+        double formattedHours = Math.round(totalHours * 100.0) / 100.0;
+        return Mono.just(formattedHours);
     }
 
     /**
@@ -107,6 +125,11 @@ public class TimeCacheServiceImpl implements TimeCacheService {
      * @param milestoneId 里程碑的ID（可选）
      */
     private void addTimeSync(String todoId, long milliseconds, String taskId, String milestoneId) {
+        // 增加todo的时间
+        if (todoId != null) {
+            timeCacheStoreService.updateTodoTotalTime(todoId, milliseconds);
+        }
+        
         // 增加任务的时间
         if (taskId != null) {
             Long currentTaskTime = timeCacheStoreService.getTaskTotalTime(taskId);
@@ -165,26 +188,43 @@ public class TimeCacheServiceImpl implements TimeCacheService {
         
         // 根据todo的状态执行不同的操作
         if (todo.checkCompleted()) {
-            // 任务已完成，只使用todo对象中的time属性计算时间
+            // 任务已完成，只使用 todo 对象中的 time 属性计算时间
             return Mono.fromRunnable(() -> {
                 // 如果todo有时间安排，计算总时间并添加到缓存
                 if (todo.getTime() != null) {
                     // 使用Time类自身的calculateDurationMillis方法计算时间差（毫秒）
-                    long timeDuration = todo.getTime().calculateDurationMillis();
+                    long timeDuration = todo.getTime().calculateDurationMillis(todo.getListId());
                     if (timeDuration > 0) {
                         addTimeSync(todoId, timeDuration, taskId, milestoneId);
                     }
                 }
             });
         } else {
-            // 任务未完成，只清除时间缓存
-            return Mono.when(
-                clearTime(todoId),
-                taskId != null ? clearTaskTime(taskId) : Mono.empty(),
-                milestoneId != null ? clearMilestoneTime(milestoneId) : Mono.empty()
-            );
+            // 任务未完成，需要从聚合时间中减去该todo的时间，而不是清除整个聚合
+            return Mono.fromSupplier(() -> timeCacheStoreService.getTodoTotalTime(todoId))
+                .filter(totalTime -> totalTime > 0)
+                .flatMap(todoTime -> {
+                    // 从task时间中减去todo时间
+                    Mono<Void> taskMono = taskId != null ? Mono.fromRunnable(() -> {
+                        Long currentTaskTime = timeCacheStoreService.getTaskTotalTime(taskId);
+                        long newTaskTime = Math.max(0, currentTaskTime - todoTime);
+                        timeCacheStoreService.updateTaskTotalTime(taskId, newTaskTime);
+                    }) : Mono.empty();
+                    
+                    // 从milestone时间中减去todo时间
+                    Mono<Void> milestoneMono = milestoneId != null ? Mono.fromRunnable(() -> {
+                        Long currentMilestoneTime = timeCacheStoreService.getMilestoneTotalTime(milestoneId);
+                        long newMilestoneTime = Math.max(0, currentMilestoneTime - todoTime);
+                        timeCacheStoreService.updateMilestoneTotalTime(milestoneId, newMilestoneTime);
+                    }) : Mono.empty();
+                    
+                    // 清除todo自身的时间缓存
+                    return Mono.when(
+                        clearTime(todoId),
+                        taskMono,
+                        milestoneMono
+                    );
+                });
         }
     }
-    
-
 }

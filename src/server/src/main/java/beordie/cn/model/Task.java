@@ -15,7 +15,34 @@ import java.util.List;
 
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @TableName("task")
-public class Task {
+public class Task implements CheckStatus {
+
+    @Override
+    public boolean checkCompleted() {
+        return completed != null && completed == 1;
+    }
+
+    @Override
+    public boolean checkOverdue(long overdueThreshold) {
+        // 如果任务已完成，则不逾期
+        if (checkCompleted()) {
+            return false;
+        }
+        
+        if (endDate == null) {
+            return false;
+        }
+        
+        // 获取当前日期
+        LocalDate nowDate = LocalDate.now();
+        
+        // 计算当前日期与结束日期的天数差
+        // 如果endDate在nowDate之前，差为正数
+        long daysDiff = nowDate.toEpochDay() - endDate.toEpochDay();
+        
+        // 如果天数差大于overdueDay，则任务逾期
+        return daysDiff > overdueThreshold;
+    }
     /**
      * 任务ID，UUID自动生成
      */
@@ -61,7 +88,7 @@ public class Task {
      * 任务关联的待办事项列表，数据库中不存在，通过关联查询获取
      */
     @TableField(exist = false)
-    private List<Object> todos;
+    private List<Todo> todos;
     
     /**
      * 任务创建时间
@@ -159,11 +186,11 @@ public class Task {
         this.completed = completed;
     }
 
-    public List<Object> getTodos() {
+    public List<Todo> getTodos() {
         return todos;
     }
 
-    public void setTodos(List<Object> todos) {
+    public void setTodos(List<Todo> todos) {
         this.todos = todos;
     }
 
