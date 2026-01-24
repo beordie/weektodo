@@ -4,14 +4,14 @@
     <!-- 点击区域 -->
     <div class="task-selector-trigger" @click="toggleDropdown">
       <i class="bi bi-person-workspace"></i>
-      <span v-if="taskId" class="selected-task-text">{{ task }}</span>
+      <span v-if="taskId" class="selected-task-text" :title="task">{{ truncateTitle(task) }}</span>
     </div>
     
     <!-- 下拉菜单 -->
     <div v-show="showDropdown" class="dropdown-menu-task-selector">
       <div v-for="task in taskOptions" :key="task.title" class="dropdown-item" @click="selectTask(task)">
         <div class="task-color-indicator" :style="{ backgroundColor: task.color || '#2196F3' }"></div>
-        <span>{{ task.title }}</span>
+        <span :title="task.title">{{ truncateTitle(task.title) }}</span>
       </div>
     </div>
   </div>
@@ -105,6 +105,10 @@ export default {
         this.showDropdown = false;
         console.log('Clicked outside, closing dropdown');
       }
+    },
+    truncateTitle(str) {
+      if (!str) return '';
+      return str.length > 5 ? str.slice(0, 5) + '…' : str;
     }
   }
 };

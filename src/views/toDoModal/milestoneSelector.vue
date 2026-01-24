@@ -4,7 +4,7 @@
     <!-- 点击区域 -->
     <div class="milestone-selector-trigger" @click="toggleDropdown" v-if="selectedTask">
       <i class="bi bi-flag"></i>
-      <span v-if="milestoneId" class="selected-milestone-text">{{ milestone }}</span>
+      <span v-if="milestoneId" class="selected-milestone-text" :title="milestone">{{ truncateTitle(milestone) }}</span>
     </div>
     
     <!-- 下拉菜单 -->
@@ -15,7 +15,7 @@
       </div>
       <div v-for="milestone in milestoneOptions" :key="milestone.title || milestone" class="dropdown-item" @click="selectMilestone(milestone)">
         <i class="bi bi-flag-fill"></i>
-        <span>{{ milestone.title || milestone }}</span>
+        <span :title="milestone.title || milestone">{{ truncateTitle(milestone.title || milestone) }}</span>
       </div>
     </div>
   </div>
@@ -135,6 +135,10 @@ export default {
       if (this.showDropdown && !event.target.closest('.milestone-selector-container')) {
         this.showDropdown = false;
       }
+    },
+    truncateTitle(str) {
+      if (!str) return '';
+      return str.length > 5 ? str.slice(0, 5) + '…' : str;
     }
   }
 };
