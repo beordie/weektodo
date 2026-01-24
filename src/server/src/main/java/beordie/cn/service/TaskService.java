@@ -348,4 +348,174 @@ public class TaskService {
                     System.out.println("TaskService.getTodoCreationStatsByTaskId: 返回统计数据，非零值数量=" + nonZeroCount);
                 });
     }
+    
+    public Mono<int[]> getTodoCompletionTrendByTaskId(String taskId, String type) {
+        String trendType = type == null ? "week_daily" : type;
+        int[] stats = trendType.equals("quarter_quarterly") ? new int[4] : new int[7];
+        java.time.LocalDate today = java.time.LocalDate.now();
+        java.time.LocalDate startDay = today.minusDays(6);
+        java.time.LocalDate startWeek = today.with(java.time.temporal.TemporalAdjusters.previousOrSame(java.time.DayOfWeek.SUNDAY)).minusWeeks(6);
+        java.time.LocalDate startMonth = today.withDayOfMonth(1).minusMonths(6);
+        java.time.LocalDate startQuarterBase = today.withDayOfMonth(1);
+        int currentQuarterIndex = (startQuarterBase.getMonthValue() - 1) / 3;
+        int startQuarterOffset = currentQuarterIndex - 3;
+        int startQuarterYear = startQuarterBase.getYear();
+        while (startQuarterOffset < 0) {
+            startQuarterOffset += 4;
+            startQuarterYear -= 1;
+        }
+        java.time.Month startQuarterMonth = java.time.Month.of(startQuarterOffset * 3 + 1);
+        java.time.LocalDate startQuarter = java.time.LocalDate.of(startQuarterYear, startQuarterMonth, 1);
+        return todoRepository.findByTaskId(taskId)
+                .filter(beordie.cn.model.Todo::checkCompleted)
+                .reduce(stats, (result, todo) -> {
+                    java.time.LocalDateTime ts = todo.getCreatedAt();
+                    if (ts == null) {
+                        java.time.LocalDate dTmp = todo.getDate();
+                        if (dTmp != null) {
+                            ts = dTmp.atStartOfDay();
+                        }
+                    }
+                    if (ts == null) {
+                        return result;
+                    }
+                    java.time.LocalDate d = ts.toLocalDate();
+                    switch (trendType) {
+                        case "week_daily": {
+                            long diff = java.time.temporal.ChronoUnit.DAYS.between(startDay, d);
+                            if (diff >= 0 && diff < 7) {
+                                result[(int) diff] += 1;
+                            }
+                            break;
+                        }
+                        case "week_weekly": {
+                            java.time.LocalDate dWeekStart = d.with(java.time.temporal.TemporalAdjusters.previousOrSame(java.time.DayOfWeek.SUNDAY));
+                            long wdiff = java.time.temporal.ChronoUnit.WEEKS.between(startWeek, dWeekStart);
+                            if (wdiff >= 0 && wdiff < 7) {
+                                result[(int) wdiff] += 1;
+                            }
+                            break;
+                        }
+                        case "month_monthly": {
+                            java.time.LocalDate dMonthStart = d.withDayOfMonth(1);
+                            long mdiff = java.time.temporal.ChronoUnit.MONTHS.between(startMonth, dMonthStart);
+                            if (mdiff >= 0 && mdiff < 7) {
+                                result[(int) mdiff] += 1;
+                            }
+                            break;
+                        }
+                        case "quarter_quarterly": {
+                            int qIndex = (d.getMonthValue() - 1) / 3;
+                            java.time.Month qStartMonth = java.time.Month.of(qIndex * 3 + 1);
+                            java.time.LocalDate dQuarterStart = java.time.LocalDate.of(d.getYear(), qStartMonth, 1);
+                            long qdiff = java.time.temporal.ChronoUnit.MONTHS.between(startQuarter, dQuarterStart) / 3;
+                            if (qdiff >= 0 && qdiff < 4) {
+                                result[(int) qdiff] += 1;
+                            }
+                            break;
+                        }
+                        default: {
+                            long diff = java.time.temporal.ChronoUnit.DAYS.between(startDay, d);
+                            if (diff >= 0 && diff < 7) {
+                                result[(int) diff] += 1;
+                            }
+                            break;
+                        }
+                    }
+                    return result;
+                });
+    }
+    
+    public Mono<java.util.Map<String, Object>> getTaskTrendKanbanByTaskId(String taskId, String type) {
+        String trendType = type == null ? "week_daily" : type;
+        java.util.List<String> labels = new java.util.ArrayList<>();
+        java.time.LocalDate today = java.time.LocalDate.now();
+        if ("week_daily".equals(trendType)) {
+            java.time.format.DateTimeFormatter fmt = java.time.format.DateTimeFormatter.ofPattern("MM/dd");
+            for (int i = 6; i >= 0; i--) {
+                java.time.LocalDate d = today.minusDays(i);
+                labels.add(d.format(fmt));
+            }
+        } else if ("week_weekly".equals(trendType)) {
+            labels.add("6周前");
+            labels.add("5周前");
+            labels.add("4周前");
+            labels.add("3周前");
+            labels.add("2周前");
+            labels.add("上周");
+            labels.add("本周");
+        } else if ("month_monthly".equals(trendType)) {
+            labels.add("6月前");
+            labels.add("5月前");
+            labels.add("4月前");
+            labels.add("3月前");
+            labels.add("2月前");
+            labels.add("上月");
+            labels.add("本月");
+        } else if ("quarter_quarterly".equals(trendType)) {
+            labels.add("3季度前");
+            labels.add("2季度前");
+            labels.add("上季度");
+            labels.add("本季度");
+        }
+        return getTodoCompletionTrendByTaskId(taskId, type)
+                .map(values -> {
+                    java.util.Map<String, Object> resp = new java.util.LinkedHashMap<>();
+                    resp.put("labels", labels);
+                    resp.put("values", values);
+                    return resp;
+                });
+    }
+    
+    public Mono<java.util.Map<String, Object>> getTaskTimeStatsKanbanByTaskId(String taskId, int period) {
+        int days = Math.min(Math.max(period, 1), 30);
+        int window = days;
+        java.time.LocalDate today = java.time.LocalDate.now();
+        java.util.List<java.time.LocalDate> dateWindows = new java.util.ArrayList<>();
+        java.util.List<String> labels = new java.util.ArrayList<>();
+        java.time.format.DateTimeFormatter fmt = java.time.format.DateTimeFormatter.ofPattern("MM/dd");
+        for (int i = window - 1; i >= 0; i--) {
+            java.time.LocalDate d = today.minusDays(i);
+            dateWindows.add(d);
+            labels.add(d.format(fmt));
+        }
+        return todoRepository.findByTaskId(taskId)
+                .reduce(new double[window], (result, todo) -> {
+                    if (!todo.checkCompleted()) {
+                        return result;
+                    }
+                    beordie.cn.model.Todo.Time t = todo.getTime();
+                    if (t == null || t.getStart() == null || t.getEnd() == null) {
+                        return result;
+                    }
+                    String listId = todo.getListId();
+                    java.time.LocalDateTime created = todo.getCreatedAt();
+                    java.time.LocalDate d = created != null ? created.toLocalDate() : todo.getDate();
+                    if (d == null) {
+                        return result;
+                    }
+                    long millis = t.calculateDurationMillis(listId);
+                    if (millis <= 0) {
+                        return result;
+                    }
+                    for (int idx = 0; idx < dateWindows.size(); idx++) {
+                        if (d.equals(dateWindows.get(idx))) {
+                            result[idx] += (millis / 3600000.0);
+                            break;
+                        }
+                    }
+                    return result;
+                })
+                .map(values -> {
+                    // 保留一位小数
+                    double[] rounded = new double[values.length];
+                    for (int i = 0; i < values.length; i++) {
+                        rounded[i] = Math.round(values[i] * 10.0) / 10.0;
+                    }
+                    java.util.Map<String, Object> resp = new java.util.LinkedHashMap<>();
+                    resp.put("labels", labels);
+                    resp.put("values", rounded);
+                    return resp;
+                });
+    }
 }

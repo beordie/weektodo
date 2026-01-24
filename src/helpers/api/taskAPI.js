@@ -172,6 +172,14 @@ export const taskAPI = {
    */
   getTodoCreationStats(taskId) {
     return request(`/tasks/${taskId}/todos/stats`);
+  },
+  getTaskTrendKanban(taskId, type = 'week_daily') {
+    const query = new URLSearchParams({ type }).toString();
+    return request(`/tasks/${taskId}/kanban/trend?${query}`);
+  },
+  getTaskTimeKanban(taskId, period = '7') {
+    const query = new URLSearchParams({ period }).toString();
+    return request(`/tasks/${taskId}/kanban/time?${query}`);
   }
 };
 

@@ -49,6 +49,9 @@ public class TaskRouterConfig {
                 .andRoute(GET("/api/tasks/{taskId}/milestones/statistics").and(accept(APPLICATION_JSON)), taskHandler::getMilestoneStatisticsByTaskId)
                 // 获取指定任务的todos创建统计信息
                 .andRoute(GET("/api/tasks/{taskId}/todos/stats").and(accept(APPLICATION_JSON)), taskHandler::getTodoCreationStatsByTaskId)
+                .andRoute(GET("/api/tasks/{taskId}/todos/completion/trend").and(accept(APPLICATION_JSON)), taskHandler::getTodoCompletionTrendByTaskId)
+                .andRoute(GET("/api/tasks/{taskId}/kanban/trend").and(accept(APPLICATION_JSON)), taskHandler::getTaskTrendKanbanByTaskId)
+                .andRoute(GET("/api/tasks/{taskId}/kanban/time").and(accept(APPLICATION_JSON)), taskHandler::getTaskTimeStatsKanbanByTaskId)
                 .andRoute(GET("/api/tasks/{taskId}/milestones/{milestoneId}").and(accept(APPLICATION_JSON)), taskHandler::getMilestoneByTaskIdAndId)
                 .andRoute(POST("/api/tasks/{taskId}/milestones")
                         .and(contentType(APPLICATION_JSON)), taskHandler::createMilestone)

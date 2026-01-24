@@ -173,4 +173,28 @@ public class TaskHandler {
                 .flatMap(stats -> ServerResponse.ok()
                         .body(Mono.just(stats), int[].class));
     }
+    
+    public Mono<ServerResponse> getTodoCompletionTrendByTaskId(ServerRequest request) {
+        String taskId = request.pathVariable("taskId");
+        String type = request.queryParam("type").orElse("week_daily");
+        return taskService.getTodoCompletionTrendByTaskId(taskId, type)
+                .flatMap(stats -> ServerResponse.ok()
+                        .body(Mono.just(stats), int[].class));
+    }
+    
+    public Mono<ServerResponse> getTaskTrendKanbanByTaskId(ServerRequest request) {
+        String taskId = request.pathVariable("taskId");
+        String type = request.queryParam("type").orElse("week_daily");
+        return taskService.getTaskTrendKanbanByTaskId(taskId, type)
+                .flatMap(stats -> ServerResponse.ok()
+                        .body(Mono.just(stats), java.util.Map.class));
+    }
+    
+    public Mono<ServerResponse> getTaskTimeStatsKanbanByTaskId(ServerRequest request) {
+        String taskId = request.pathVariable("taskId");
+        int period = Integer.parseInt(request.queryParam("period").orElse("7"));
+        return taskService.getTaskTimeStatsKanbanByTaskId(taskId, period)
+                .flatMap(stats -> ServerResponse.ok()
+                        .body(Mono.just(stats), java.util.Map.class));
+    }
 }

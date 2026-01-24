@@ -199,44 +199,14 @@
             <!-- Y轴 -->
             <line x1="50" y1="50" x2="50" y2="250" stroke="#e9ecef" stroke-width="2"/>
             
-            <!-- X轴标签 - 根据趋势类型动态显示 -->
-            <template v-if="selectedTrend === 'week_daily'">
-              <!-- 七天内每天对比 - 显示具体日期标签 -->
-              <text v-for="(date, index) in weeklyDateLabels" :key="index" 
-                    :x="100 + index * 100" 
-                    y="270" 
-                    text-anchor="middle" 
-                    class="axis-label">
-                {{ date }}
-              </text>
-            </template>
-            <template v-else-if="selectedTrend === 'week_weekly'">
-              <!-- 七周内每周对比 - 显示周数标签 -->
-              <text x="100" y="270" text-anchor="middle" class="axis-label">6周前</text>
-              <text x="200" y="270" text-anchor="middle" class="axis-label">5周前</text>
-              <text x="300" y="270" text-anchor="middle" class="axis-label">4周前</text>
-              <text x="400" y="270" text-anchor="middle" class="axis-label">3周前</text>
-              <text x="500" y="270" text-anchor="middle" class="axis-label">2周前</text>
-              <text x="600" y="270" text-anchor="middle" class="axis-label">上周</text>
-              <text x="700" y="270" text-anchor="middle" class="axis-label">本周</text>
-            </template>
-            <template v-else-if="selectedTrend === 'month_monthly'">
-              <!-- 七月内每月对比 - 显示月份标签 -->
-              <text x="100" y="270" text-anchor="middle" class="axis-label">6月前</text>
-              <text x="200" y="270" text-anchor="middle" class="axis-label">5月前</text>
-              <text x="300" y="270" text-anchor="middle" class="axis-label">4月前</text>
-              <text x="400" y="270" text-anchor="middle" class="axis-label">3月前</text>
-              <text x="500" y="270" text-anchor="middle" class="axis-label">2月前</text>
-              <text x="600" y="270" text-anchor="middle" class="axis-label">上月</text>
-              <text x="700" y="270" text-anchor="middle" class="axis-label">本月</text>
-            </template>
-            <template v-else-if="selectedTrend === 'quarter_quarterly'">
-              <!-- 四个季度对比 - 显示季度标签 -->
-              <text x="200" y="270" text-anchor="middle" class="axis-label">3季度前</text>
-              <text x="350" y="270" text-anchor="middle" class="axis-label">2季度前</text>
-              <text x="500" y="270" text-anchor="middle" class="axis-label">上季度</text>
-              <text x="650" y="270" text-anchor="middle" class="axis-label">本季度</text>
-            </template>
+            <!-- X轴标签 - 由后端提供 -->
+            <text v-for="item in trendXAxisLabels" :key="'tx-' + item.index"
+                  :x="item.x" 
+                  y="270" 
+                  :text-anchor="item.anchor" 
+                  class="axis-label">
+              {{ item.text }}
+            </text>
             
             <!-- 动态折线 -->
             <polyline 
@@ -247,21 +217,22 @@
             />
             
             <!-- 动态数据点 -->
-            <template v-for="(point, index) in trendChartDataPoints" :key="index">
+            <template v-for="(point, index) in trendChartDataPoints" :key="'tp-' + index">
               <circle 
                 :cx="point.x" 
                 :cy="point.y" 
                 r="6" 
                 fill="#007bff"
               />
-              <!-- 数据值标签 -->
+            </template>
+            <!-- 数据值标签 -->
+            <template v-for="(p, i) in trendLabeledPoints" :key="'tl-' + i">
               <text 
-                :x="point.x" 
-                :y="point.y - 10" 
+                :x="p.x" 
+                :y="p.y - 10" 
                 text-anchor="middle" 
-                class="data-label"
-              >
-                {{ point.value }}
+                class="data-label">
+                {{ p.value }}
               </text>
             </template>
           </svg>
@@ -286,12 +257,12 @@
             <line x1="50" y1="50" x2="50" y2="250" stroke="#e9ecef" stroke-width="2"/>
             
             <!-- X轴标签 -->
-            <text v-for="(date, index) in timeStatsLabels" :key="index" 
-                  :x="timeStatsChartDataPoints[index]?.x || 100 + index * 100" 
+            <text v-for="item in timeXAxisLabels" :key="'tsx-' + item.index"
+                  :x="item.x" 
                   y="270" 
-                  text-anchor="middle" 
+                  :text-anchor="item.anchor" 
                   class="axis-label">
-              {{ date }}
+              {{ item.text }}
             </text>
             
             <!-- Y轴标签 -->
@@ -308,21 +279,22 @@
             />
             
             <!-- 动态数据点 -->
-            <template v-for="(point, index) in timeStatsChartDataPoints" :key="index">
+            <template v-for="(point, index) in timeStatsChartDataPoints" :key="'ts-' + index">
               <circle 
                 :cx="point.x" 
                 :cy="point.y" 
                 r="6" 
                 fill="#28a745"
               />
-              <!-- 数据值标签 -->
+            </template>
+            <!-- 数据值标签 -->
+            <template v-for="(p, i) in timeLabeledPoints" :key="'tsl-' + i">
               <text 
-                :x="point.x" 
-                :y="point.y - 10" 
+                :x="p.x" 
+                :y="p.y - 10" 
                 text-anchor="middle" 
-                class="data-label"
-              >
-                {{ point.value }}h
+                class="data-label">
+                {{ p.value }}h
               </text>
             </template>
           </svg>
@@ -864,6 +836,21 @@ export default {
         console.log('📥 看板已打开，重新加载数据...');
         this.loadDashboardData();
         this.fetchMilestoneStats();
+        this.fetchTrendKanban();
+      }
+    },
+    selectedTrend() {
+      this.fetchTrendKanban();
+    },
+    timeStatsPeriod() {
+      this.fetchTimeKanban();
+    },
+    currentTaskId(newValue) {
+      if (newValue && this.showTaskKanban) {
+        this.loadDashboardData();
+        this.fetchMilestoneStats();
+        this.fetchTrendKanban();
+        this.fetchTimeKanban();
       }
     }
   },
@@ -888,6 +875,10 @@ export default {
       selectedTrend: 'week_daily', // 默认趋势类型：七天内每天对比
       dashboardData: null, // 存储从API获取的看板数据
       loading: false, // 加载状态
+      trendLabels: [],
+      trendStats: [],
+      timeKanbanLabels: [],
+      timeKanbanValues: [],
       currentTask: {
         title: '',
         description: '',
@@ -935,6 +926,98 @@ export default {
         const result = this.localCategories.length > 0 ? this.localCategories : [];
         console.log('  返回的分类数据:', result);
         return result;
+      },
+      trendLabelIndices() {
+        const total = Array.isArray(this.trendLabels) ? this.trendLabels.length : 0;
+        if (total <= 10) {
+          return Array.from({ length: total }, (_, i) => i);
+        }
+        const step = Math.ceil(total / 8);
+        const indices = [];
+        for (let i = 0; i < total; i += step) {
+          indices.push(i);
+        }
+        if (indices[indices.length - 1] !== total - 1) {
+          indices.push(total - 1);
+        }
+        return indices;
+      },
+      timeLabelIndices() {
+        const total = Array.isArray(this.timeStatsLabels) ? this.timeStatsLabels.length : 0;
+        if (total <= 10) {
+          return Array.from({ length: total }, (_, i) => i);
+        }
+        const step = Math.ceil(total / 8);
+        const indices = [];
+        for (let i = 0; i < total; i += step) {
+          indices.push(i);
+        }
+        if (indices[indices.length - 1] !== total - 1) {
+          indices.push(total - 1);
+        }
+        return indices;
+      },
+      trendXAxisLabels() {
+        const total = Array.isArray(this.trendLabels) ? this.trendLabels.length : 0;
+        if (total <= 0) return [];
+        const maxTicks = Math.min(8, total);
+        const indices = [];
+        for (let k = 0; k < maxTicks; k++) {
+          const idx = Math.round((k * (total - 1)) / (maxTicks - 1));
+          if (!indices.includes(idx)) indices.push(idx);
+        }
+        const startX = 60;
+        const endX = 740;
+        const step = maxTicks > 1 ? (endX - startX) / (maxTicks - 1) : 0;
+        return indices.map((i, pos) => {
+          const isFirst = pos === 0;
+          const isLast = pos === indices.length - 1;
+          const anchor = isLast ? 'end' : (isFirst ? 'start' : 'middle');
+          const xBase = startX + pos * step;
+          const x = isLast ? xBase - 4 : (isFirst ? xBase + 4 : xBase);
+          return { index: i, x, text: this.trendLabels[i], anchor };
+        });
+      },
+      timeXAxisLabels() {
+        const total = Array.isArray(this.timeStatsLabels) ? this.timeStatsLabels.length : 0;
+        if (total <= 0) return [];
+        const maxTicks = Math.min(8, total);
+        const indices = [];
+        for (let k = 0; k < maxTicks; k++) {
+          const idx = Math.round((k * (total - 1)) / (maxTicks - 1));
+          if (!indices.includes(idx)) indices.push(idx);
+        }
+        const startX = 60;
+        const endX = 740;
+        const step = maxTicks > 1 ? (endX - startX) / (maxTicks - 1) : 0;
+        return indices.map((i, pos) => {
+          const isFirst = pos === 0;
+          const isLast = pos === indices.length - 1;
+          const anchor = isLast ? 'end' : (isFirst ? 'start' : 'middle');
+          const xBase = startX + pos * step;
+          const x = isLast ? xBase - 4 : (isFirst ? xBase + 4 : xBase);
+          return { index: i, x, text: this.timeStatsLabels[i], anchor };
+        });
+      },
+      trendLabeledPoints() {
+        const pts = Array.isArray(this.trendChartDataPoints) ? this.trendChartDataPoints : [];
+        const total = pts.length;
+        if (total <= 10) return pts;
+        const step = Math.ceil(total / 8);
+        const res = [];
+        for (let i = 0; i < total; i += step) res.push(pts[i]);
+        if (res[res.length - 1] !== pts[total - 1]) res.push(pts[total - 1]);
+        return res;
+      },
+      timeLabeledPoints() {
+        const pts = Array.isArray(this.timeStatsChartDataPoints) ? this.timeStatsChartDataPoints : [];
+        const total = pts.length;
+        if (total <= 10) return pts;
+        const step = Math.ceil(total / 8);
+        const res = [];
+        for (let i = 0; i < total; i += step) res.push(pts[i]);
+        if (res[res.length - 1] !== pts[total - 1]) res.push(pts[total - 1]);
+        return res;
       },
       // 计算所有已完成任务的总时间（小时）
       completedTasksTotalHours() {
@@ -988,216 +1071,25 @@ export default {
           return createdAt >= today;
         }).length;
       },
-      // 生成完成时间统计数据 - 基于选中的todolist
-      timeStatsData() {
-        console.log('📊 timeStatsData计算属性被调用');
-        console.log('统计周期:', this.timeStatsPeriod);
-        
-        // 添加健壮的空值检查
-        const isCurrentTaskValid = this.currentTask && this.currentTask.title;
-        console.log('当前选中的todolist:', isCurrentTaskValid ? this.currentTask.title : '无选中任务');
-        
-        const days = parseInt(this.timeStatsPeriod);
-        const data = [];
-        const now = new Date();
-        const allTodos = this.getRecentTodos();
-        const selectedTaskTitle = isCurrentTaskValid ? this.currentTask.title : null;
-        
-        // 为每一天计算总完成时间
-        for (let i = Math.min(days, 7) - 1; i >= 0; i--) {
-          const targetDate = new Date(now);
-          targetDate.setDate(targetDate.getDate() - i);
-          targetDate.setHours(0, 0, 0, 0);
-          
-          const nextDay = new Date(targetDate);
-          nextDay.setDate(nextDay.getDate() + 1);
-          
-          // 过滤出当天的任务并计算总耗时（小时）
-          const dayTotalHours = allTodos
-            .filter(todo => {
-              // 如果选择了特定的todolist，只统计该列表的任务
-              if (selectedTaskTitle && todo.taskId !== selectedTaskTitle) return false;
-              
-              // 检查任务是否在当天
-              const todoDate = new Date(todo.createdAt);
-              return todoDate >= targetDate && todoDate < nextDay;
-            })
-            .reduce((total, todo) => {
-              // 基于任务的time.start和time.end字段计算实际耗时
-              let hours = 0;
-              
-              // 检查任务是否有time字段，并且time是一个包含start和end的对象
-              if (todo.time && typeof todo.time === 'object' && todo.time.start && todo.time.end) {
-                try {
-                  // 解析开始和结束时间
-                  const startTime = moment(todo.time.start, "HH:mm");
-                  const endTime = moment(todo.time.end, "HH:mm");
-                  
-                  // 计算时间差（以小时为单位）
-                  const duration = moment.duration(endTime.diff(startTime));
-                  hours = duration.asHours();
-                  
-                  // 确保时间差为正数
-                  if (hours < 0) {
-                    hours = 0;
-                  }
-                } catch (error) {
-                  // 如果解析失败，使用默认值
-                  hours = 0;
-                }
-              }
-              
-              // 如果没有时间数据或时间差为0，使用原有估算逻辑作为回退
-              if (hours !== 0) {
-                // 根据任务状态调整时间
-                if (!todo.completed) {
-                  // 完成的任务使用稍长的时间
-                  hours = 0;
-                }
-              }
-              
-              return total + hours;
-            }, 0);
-          
-          // 保留一位小数
-          data.push(parseFloat(dayTotalHours.toFixed(1)));
-        }
-        
-        console.log('基于选中todolist的时间统计数据:', data);
-        
-        return data;
-      },
 
       
-      // 获取趋势图表数据（基于最近完成的任务）
+      // 获取趋势图表数据（由后端提供）
       trendData() {
-        try {
-          const allTodos = this.getRecentTodos();
-          const now = new Date();
-          const completedTodos = allTodos.filter(todo => todo.completed);
-          
-          console.log('completedTodos:', this.selectedTrend);
-          switch (this.selectedTrend) {
-            case 'week_daily': {
-              // 统计最近7天每天完成的任务数
-              const dailyData = [];
-              for (let i = 6; i >= 0; i--) {
-                const targetDate = new Date(now);
-                targetDate.setDate(targetDate.getDate() - i);
-                targetDate.setHours(0, 0, 0, 0);
-                
-                const nextDay = new Date(targetDate);
-                nextDay.setDate(nextDay.getDate() + 1);
-                
-                const count = completedTodos.filter(todo => {
-                  const todoDate = new Date(todo.createdAt);
-                  console.log('todoDate:', todoDate);
-                  return todoDate >= targetDate && todoDate < nextDay;
-                }).length;
-                
-                dailyData.push(count);
-              }
-              return dailyData;
-            }
-              
-            case 'week_weekly': {
-              // 统计最近7周每周完成的任务数
-              const weeklyData = [];
-              for (let i = 6; i >= 0; i--) {
-                const targetDate = new Date(now);
-                const dayOfWeek = targetDate.getDay();
-                targetDate.setDate(targetDate.getDate() - dayOfWeek - i * 7);
-                targetDate.setHours(0, 0, 0, 0);
-                
-                const nextWeek = new Date(targetDate);
-                nextWeek.setDate(nextWeek.getDate() + 7);
-                
-                const count = completedTodos.filter(todo => {
-                  const todoDate = new Date(todo.createdAt);
-                  return todoDate >= targetDate && todoDate < nextWeek;
-                }).length;
-                
-                weeklyData.push(count);
-              }
-              return weeklyData;
-            }
-              
-            case 'month_monthly': {
-              // 统计最近7个月每月完成的任务数
-              const monthlyData = [];
-              for (let i = 6; i >= 0; i--) {
-                const targetDate = new Date(now.getFullYear(), now.getMonth() - i, 1);
-                const nextMonth = new Date(targetDate.getFullYear(), targetDate.getMonth() + 1, 1);
-                
-                const count = completedTodos.filter(todo => {
-                  const todoDate = new Date(todo.createdAt);
-                  return todoDate >= targetDate && todoDate < nextMonth;
-                }).length;
-                
-                monthlyData.push(count);
-              }
-              return monthlyData;
-            }
-              
-            case 'quarter_quarterly': {
-              // 统计最近4个季度每季度完成的任务数
-              const quarterlyData = [];
-              for (let i = 3; i >= 0; i--) {
-                // 从当前季度往前推i个季度
-                let targetQuarter = Math.floor(now.getMonth() / 3) - i;
-                let yearOffset = 0;
-                
-                // 处理跨年度情况
-                while (targetQuarter < 0) {
-                  targetQuarter += 4;
-                  yearOffset -= 1;
-                }
-                
-                const targetYear = now.getFullYear() + yearOffset;
-                const startMonth = targetQuarter * 3;
-                const targetDate = new Date(targetYear, startMonth, 1);
-                const nextQuarterMonth = (targetQuarter + 1) * 3;
-                const nextQuarterYear = nextQuarterMonth >= 12 ? targetYear + 1 : targetYear;
-                const nextQuarter = new Date(nextQuarterYear, nextQuarterMonth % 12, 1);
-                
-                const count = completedTodos.filter(todo => {
-                  const todoDate = new Date(todo.createdAt);
-                  return todoDate >= targetDate && todoDate < nextQuarter;
-                }).length;
-                
-                quarterlyData.push(count);
-              }
-              return quarterlyData;
-            }
-              
-            default: {
-              // 默认返回最近7天数据
-              const defaultData = [];
-              for (let i = 6; i >= 0; i--) {
-                const targetDate = new Date(now);
-                targetDate.setDate(targetDate.getDate() - i);
-                targetDate.setHours(0, 0, 0, 0);
-                
-                const nextDay = new Date(targetDate);
-                nextDay.setDate(nextDay.getDate() + 1);
-                
-                const count = completedTodos.filter(todo => {
-                  const todoDate = new Date(todo.createdAt);
-                  return todoDate >= targetDate && todoDate < nextDay;
-                }).length;
-                
-                defaultData.push(count);
-              }
-              return defaultData;
-            }
-          }
-        } catch (error) {
-          console.error('Error calculating trend data:', error);
-          // 错误时返回默认数据
-          return this.selectedTrend === 'quarter_quarterly' 
-            ? [0, 0, 0, 0] 
-            : [0, 0, 0, 0, 0, 0, 0];
+        if (Array.isArray(this.trendStats) && this.trendStats.length > 0) {
+          return this.trendStats;
         }
+        return this.selectedTrend === 'quarter_quarterly' 
+          ? [0, 0, 0, 0] 
+          : [0, 0, 0, 0, 0, 0, 0];
+      },
+      
+      // 时间统计数据（由后端提供），根据period长度返回
+      timeStatsData() {
+        if (Array.isArray(this.timeKanbanValues) && this.timeKanbanValues.length > 0) {
+          return this.timeKanbanValues;
+        }
+        const len = Math.min(parseInt(this.timeStatsPeriod), 30);
+        return Array(len).fill(0);
       },
       // 生成趋势图的坐标点
       trendPoints() {
@@ -1247,15 +1139,14 @@ export default {
       },
       // 生成日期标签
       timeStatsLabels() {
-        const days = parseInt(this.timeStatsPeriod);
+        if (Array.isArray(this.timeKanbanLabels) && this.timeKanbanLabels.length > 0) {
+          return this.timeKanbanLabels;
+        }
         const labels = [];
-        
-        // 为每一天生成正确的日期标签（最多显示7天）
-        for (let i = Math.min(days, 7) - 1; i >= 0; i--) {
+        for (let i = Math.min(parseInt(this.timeStatsPeriod), 30) - 1; i >= 0; i--) {
           const date = moment().subtract(i, 'days');
           labels.push(date.format('MM/DD'));
         }
-        
         return labels;
       },
       
@@ -1286,18 +1177,12 @@ export default {
       // 生成折线图的坐标点
       timeStatsPoints() {
         const data = this.timeStatsData;
-        const maxValue = Math.max(...data, 1); // 避免除以0
-        const pointCount = data.length;
-        
-        // 根据数据点数量计算合适的间距，与trendPoints保持一致
-        const getXCoordinate = (index) => {
-          // 对于不同数量的数据点，使用不同的起始位置和间距
-          if (pointCount === 4) { // 如果有4个数据点
-            return 200 + index * 150;
-          } else { // 7个或更少的数据点
-            return 100 + index * 100;
-          }
-        };
+        const maxValue = Math.max(...data, 1);
+        const pointCount = Math.max(data.length, 1);
+        const startX = 60;
+        const endX = 740;
+        const step = pointCount > 1 ? (endX - startX) / (pointCount - 1) : 0;
+        const getXCoordinate = (index) => startX + index * step;
         
         return data.map((value, index) => {
           const x = getXCoordinate(index);
@@ -1310,17 +1195,12 @@ export default {
       // 生成时间统计图表的数据点，与trendChartDataPoints保持一致的结构
       timeStatsChartDataPoints() {
         const data = this.timeStatsData;
-        const maxValue = Math.max(...data, 1); // 避免除以0
-        const pointCount = data.length;
-        
-        // 根据数据点数量计算合适的间距
-        const getXCoordinate = (index) => {
-          if (pointCount === 4) { // 如果有4个数据点
-            return 200 + index * 150;
-          } else { // 7个或更少的数据点
-            return 100 + index * 100;
-          }
-        };
+        const maxValue = Math.max(...data, 1);
+        const pointCount = Math.max(data.length, 1);
+        const startX = 60;
+        const endX = 740;
+        const step = pointCount > 1 ? (endX - startX) / (pointCount - 1) : 0;
+        const getXCoordinate = (index) => startX + index * step;
         
         return data.map((value, index) => {
           const x = getXCoordinate(index);
@@ -1601,6 +1481,48 @@ export default {
         
       // 获取待办事项创建统计数据
       this.fetchTodoCreationStats();
+      // 获取任务完成趋势看板数据
+      this.fetchTrendKanban();
+      // 获取完成时间统计看板数据
+      this.fetchTimeKanban();
+    },
+    fetchTrendKanban() {
+      if (!this.currentTaskId) {
+        return;
+      }
+      taskAPI.getTaskTrendKanban(this.currentTaskId, this.selectedTrend)
+        .then(response => {
+          if (response && Array.isArray(response.values)) {
+            this.trendStats = response.values;
+            this.trendLabels = Array.isArray(response.labels) ? response.labels : [];
+          } else {
+            this.trendStats = [];
+            this.trendLabels = [];
+          }
+        })
+        .catch(() => {
+          this.trendStats = [];
+          this.trendLabels = [];
+        });
+    },
+    fetchTimeKanban() {
+      if (!this.currentTaskId) {
+        return;
+      }
+      taskAPI.getTaskTimeKanban(this.currentTaskId, this.timeStatsPeriod)
+        .then(response => {
+          if (response && Array.isArray(response.values)) {
+            this.timeKanbanValues = response.values;
+            this.timeKanbanLabels = Array.isArray(response.labels) ? response.labels : [];
+          } else {
+            this.timeKanbanValues = [];
+            this.timeKanbanLabels = [];
+          }
+        })
+        .catch(() => {
+          this.timeKanbanValues = [];
+          this.timeKanbanLabels = [];
+        });
     },
     // 解析任务的时间信息并格式化为显示字符串
     formatTaskTime(task) {
@@ -2215,6 +2137,11 @@ export default {
   font-size: 12px;
   fill: #6c757d;
   font-weight: 500;
+}
+.data-label {
+  font-size: 12px;
+  fill: #212529;
+  pointer-events: none;
 }
 
 /* 完成时间统计样式 */
