@@ -156,6 +156,11 @@ public class Todo implements CheckStatus, Comparable<Todo> {
         }
     }
 
+    @Override
+    public boolean checkUpcoming(int upcomingThreshold) {
+        return false;
+    }
+
     /**
      * 获取完整的开始时间
      * @return 完整的开始时间LocalDateTime，如果解析失败或time为null则返回null
@@ -245,6 +250,11 @@ public class Todo implements CheckStatus, Comparable<Todo> {
         @JsonIgnore
         public boolean checkOverdue(long overdueThresholdSeconds) {
             // 子任务没有时间信息，所以默认不逾期
+            return false;
+        }
+
+        @Override
+        public boolean checkUpcoming(int upcomingThreshold) {
             return false;
         }
     }

@@ -138,8 +138,8 @@
         class="task-card"
         :class="{
           'completed': task.completed === 1,
-          'overdue': task.completed !== 1 && isOverdue(task),
-          'due-soon': task.completed !== 1 && isDueSoon(task)
+          'overdue': task.completed !== 1 && task.overdueStatus == 1,
+          'due-soon': task.completed !== 1 && task.overdueStatus == 2
         }"
         :style="{ borderLeft: `4px solid ${task.color || '#2196F3'}` }"
         @click="openTaskDetails(task.id)"

@@ -51,6 +51,7 @@ public class TaskService {
     }
 
     public Flux<Task> getAllTasks(String title, String category, String sortBy, String sortOrder) {
+        TaskTimeConfig timeConfig = configHandler.getTaskTimeConfig();
         return taskRepository.findAll(title, category, sortBy, sortOrder)
                 .concatMap(task -> 
                     milestoneRepository.findByTaskId(task.getId())
@@ -63,6 +64,9 @@ public class TaskService {
                                     .filter(milestone -> milestone.getCompleted() != null && milestone.getCompleted() == 1)
                                     .count());
                             task.setMilestoneCounter(counter);
+                            task.checkOverdue(timeConfig.getOverdueThresholdDays());
+                            task.checkUpcoming(timeConfig.getUpcomingThresholdDays());
+                                
                             return Mono.just(task);
                         })
                 );

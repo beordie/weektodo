@@ -10,106 +10,106 @@
     <task-category-management v-show="showTaskCategoryManagement && !showTaskKanban"></task-category-management>
     <task-kanban v-show="showTaskKanban"></task-kanban>
 
-    <div class="h-100 d-flex flex-column">
-        <div
-          v-show="showCalendar && !showTaskKanban"
-          class="todo-lists-container"
-          :style="resizableStyle"
-          ref="calendarContainer"
-          :class="{
-            'full-screen': !showCustomList,
-            'hidden-lists-container': hideTopListContainer,
-            'full-screen-divider': hideBottomListContainer,
-          }"
-        >
-          <i class="bi-chevron-left slider-btn" ref="weekLeft" @click="weekMoveLeft"></i>
-          <div class="todo-slider weekdays" ref="weekListContainer">
-            <to-do-list
-              v-for="date in dates_array"
-              :key="date"
-              :id="date"
-              :showCustomList="showCustomList"
-              @todo-list-mounted="todoListMounted"
-            >
-            </to-do-list>
-          </div>
-          <i class="bi-chevron-right slider-btn" ref="weekRight" @click="weekMoveRight"></i>
+    <div class="h-100 d-flex flex-column" v-if="!showTaskManagement && !showTaskCategoryManagement && !showTaskKanban">
+      <div
+        v-show="showCalendar && !showTaskKanban"
+        class="todo-lists-container"
+        :style="resizableStyle"
+        ref="calendarContainer"
+        :class="{
+          'full-screen': !showCustomList,
+          'hidden-lists-container': hideTopListContainer,
+          'full-screen-divider': hideBottomListContainer,
+        }"
+      >
+        <i class="bi-chevron-left slider-btn" ref="weekLeft" @click="weekMoveLeft"></i>
+        <div class="todo-slider weekdays" ref="weekListContainer">
+          <to-do-list
+            v-for="date in dates_array"
+            :key="date"
+            :id="date"
+            :showCustomList="showCustomList"
+            @todo-list-mounted="todoListMounted"
+          >
+          </to-do-list>
         </div>
+        <i class="bi-chevron-right slider-btn" ref="weekRight" @click="weekMoveRight"></i>
+      </div>
 
-        <div
-          v-show="showCustomList && showCalendar && !showTaskKanban"
-          class="main-horizontal-divider"
-          id="resizer"
-          :class="mainDividerPositionClass"
-          @mousedown="resizerMouseDownHandler"
-          @dblclick="resizerDblClick"
-        >
-          <div class="inner-main-horizontal-divider"></div>
-          <div class="divider-icons-container">
-            <i
-              class="bi-chevron-up move-to-center-up divider-icons"
-              @click="setDividerPosition(1)"
-              :title="$t('ui.restorePanel')"
-            ></i>
-            <i
-              class="bi-chevron-up move-to-corner-up divider-icons"
-              @click="setDividerPosition(2)"
-              :title="$t('ui.maximizeListPanel')"
-            ></i>
-            <i
-              class="bi-chevron-down move-to-center-down divider-icons"
-              @click="setDividerPosition(1)"
-              :title="$t('ui.restorePanel')"
-            ></i>
-            <i
-              class="bi-chevron-down move-to-corner-down divider-icons"
-              @click="setDividerPosition(0)"
-              :title="$t('ui.maximizeCalendarPanel')"
-            ></i>
-          </div>
-        </div>
-
-        <div
-          v-show="showCustomList && !showTaskKanban"
-          class="todo-lists-container"
-          :class="{
-            'full-screen': !showCalendar,
-            'flex-grow-1': showCalendar,
-            'hidden-lists-container': hideBottomListContainer,
-          }"
-        >
+      <div
+        v-show="showCustomList && showCalendar && !showTaskKanban"
+        class="main-horizontal-divider"
+        id="resizer"
+        :class="mainDividerPositionClass"
+        @mousedown="resizerMouseDownHandler"
+        @dblclick="resizerDblClick"
+      >
+        <div class="inner-main-horizontal-divider"></div>
+        <div class="divider-icons-container">
           <i
-            class="bi-chevron-left slider-btn"
-            @click="customMoveLeft"
-            :style="{
-              visibility: cTodoList.length > customColumns ? 'visible' : 'hidden',
-            }"
+            class="bi-chevron-up move-to-center-up divider-icons"
+            @click="setDividerPosition(1)"
+            :title="$t('ui.restorePanel')"
           ></i>
-          <div class="todo-slider slides" ref="customListContainer">
-            <to-do-list
-              v-for="(cTodoList, index) in cTodoList"
-              :key="cTodoList.listId"
-              :id="cTodoList.listId"
-              :customTodoList="true"
-              :cTodoListIndex="index"
-              :showCustomList="showCustomList"
-              @todo-list-mounted="todoListMounted"
-            ></to-do-list>
-          </div>
           <i
-            class="bi-chevron-right slider-btn"
-            @click="customMoveRight"
-            :style="{
-              visibility: cTodoList.length > customColumns ? 'visible' : 'hidden',
-            }"
+            class="bi-chevron-up move-to-corner-up divider-icons"
+            @click="setDividerPosition(2)"
+            :title="$t('ui.maximizeListPanel')"
           ></i>
-        </div>
-
-        <div v-show="!showCustomList && !showCalendar" style="margin: auto">
-          <img v-if="darkTheme" src="img/WeekToDoDarkLogo.webp" />
-          <img v-else src="img/WeekToDoLightLogo.webp" />
+          <i
+            class="bi-chevron-down move-to-center-down divider-icons"
+            @click="setDividerPosition(1)"
+            :title="$t('ui.restorePanel')"
+          ></i>
+          <i
+            class="bi-chevron-down move-to-corner-down divider-icons"
+            @click="setDividerPosition(0)"
+            :title="$t('ui.maximizeCalendarPanel')"
+          ></i>
         </div>
       </div>
+
+      <div
+        v-show="showCustomList && !showTaskKanban"
+        class="todo-lists-container"
+        :class="{
+          'full-screen': !showCalendar,
+          'flex-grow-1': showCalendar,
+          'hidden-lists-container': hideBottomListContainer,
+        }"
+      >
+        <i
+          class="bi-chevron-left slider-btn"
+          @click="customMoveLeft"
+          :style="{
+            visibility: cTodoList.length > customColumns ? 'visible' : 'hidden',
+          }"
+        ></i>
+        <div class="todo-slider slides" ref="customListContainer">
+          <to-do-list
+            v-for="(cTodoList, index) in cTodoList"
+            :key="cTodoList.listId"
+            :id="cTodoList.listId"
+            :customTodoList="true"
+            :cTodoListIndex="index"
+            :showCustomList="showCustomList"
+            @todo-list-mounted="todoListMounted"
+          ></to-do-list>
+        </div>
+        <i
+          class="bi-chevron-right slider-btn"
+          @click="customMoveRight"
+          :style="{
+            visibility: cTodoList.length > customColumns ? 'visible' : 'hidden',
+          }"
+        ></i>
+      </div>
+
+      <div v-show="!showCustomList && !showCalendar" style="margin: auto">
+        <img v-if="darkTheme" src="img/WeekToDoDarkLogo.webp" />
+        <img v-else src="img/WeekToDoLightLogo.webp" />
+      </div>
+    </div>
 
       <remove-custom-list></remove-custom-list>
       <config-modal @change-columns="weekResetScroll" :configProp="$store.getters.config"></config-modal>
@@ -920,5 +920,9 @@ body {
 
 .full-screen-divider {
   height: 100% !important;
+}
+
+.force-hidden {
+  display: none !important;
 }
 </style>

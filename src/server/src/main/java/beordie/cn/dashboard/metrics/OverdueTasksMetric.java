@@ -40,8 +40,6 @@ public class OverdueTasksMetric extends AbstractDashboardMetricCalculator {
     public DashboardStat calculate(DashboardContext ctx) {
         int overdue = 0;
         
-        LocalDate nowDate = ctx.getNow().toLocalDate();
-        
         // 如果是TaskDashboardContext，使用todos进行统计
         if (ctx instanceof TaskDashboardContext taskCtx) {
             int overdueThresholdDays = taskCtx.getTimeConfig().getOverdueThresholdSeconds();

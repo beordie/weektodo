@@ -7,6 +7,7 @@ import com.baomidou.mybatisplus.annotation.TableName;
 import com.baomidou.mybatisplus.annotation.EnumValue;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import com.fasterxml.jackson.annotation.JsonValue;
 
 import java.time.LocalDate;
@@ -39,10 +40,41 @@ public class Task implements CheckStatus {
         // 计算当前日期与结束日期的天数差
         // 如果endDate在nowDate之前，差为正数
         long daysDiff = nowDate.toEpochDay() - endDate.toEpochDay();
-        
-        // 如果天数差大于overdueDay，则任务逾期
-        return daysDiff > overdueThreshold;
+        boolean checked = daysDiff > overdueThreshold;
+
+        if (checked) {
+            this.setOverdueStatus(OverdueStatus.OVERDUE);
+        }
+
+        return checked;
     }
+
+    @Override
+    public boolean checkUpcoming(int upcomingThreshold) {
+        // 如果任务已完成，则不计算
+        if (checkCompleted()) {
+            return false;
+        }
+
+        if (endDate == null) {
+            return false;
+        }
+
+        // 获取当前日期
+        LocalDate nowDate = LocalDate.now();
+
+        long daysDiff = endDate.toEpochDay() - nowDate.toEpochDay();
+
+        // 如果天数差大于overdueDay，则任务逾期
+        boolean checked = daysDiff <= upcomingThreshold;
+
+        if (checked) {
+            this.setOverdueStatus(OverdueStatus.UPCOMING);
+        }
+
+        return checked;
+    }
+
     /**
      * 任务ID，UUID自动生成
      */
@@ -116,6 +148,10 @@ public class Task implements CheckStatus {
      */
     @TableField(exist = false)
     private MilestoneCounter milestoneCounter;
+
+    @TableField(exist = false)
+    @JsonSerialize(using = OverdueStatusCodeSerializer.class)
+    private OverdueStatus overdueStatus;
 
     // 构造函数
     public Task() {
@@ -234,6 +270,14 @@ public class Task implements CheckStatus {
         this.milestoneCounter = milestoneCounter;
     }
 
+    public OverdueStatus getOverdueStatus() {
+        return overdueStatus;
+    }
+
+    public void setOverdueStatus(OverdueStatus overdueStatus) {
+        this.overdueStatus = overdueStatus;
+    }
+
     @Override
     public String toString() {
         return "Task{" +
@@ -271,6 +315,36 @@ public class Task implements CheckStatus {
 
         public void setDone(Integer done) {
             this.done = done;
+        }
+    }
+
+    public enum OverdueStatus {
+        NORMAL(0, "正常"),
+        UPCOMING(1, "快逾期"),
+        OVERDUE(2, "已逾期");
+
+        private final int code;
+        private final String title;
+
+        OverdueStatus(int code, String title) {
+            this.code = code;
+            this.title = title;
+        }
+
+        @com.fasterxml.jackson.annotation.JsonValue
+        public int getCode() {
+            return code;
+        }
+
+        public String getTitle() {
+            return title;
+        }
+
+        public static OverdueStatus fromCode(int code) {
+            for (OverdueStatus s : values()) {
+                if (s.code == code) return s;
+            }
+            return NORMAL;
         }
     }
 }
