@@ -3,6 +3,8 @@ package beordie.cn.repository;
 import beordie.cn.mapper.TodoMapper;
 import beordie.cn.model.Todo;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import beordie.cn.model.TodoSortKey;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;
 import reactor.core.publisher.Flux;
@@ -154,5 +156,18 @@ public class MyBatisPlusTodoRepository implements TodoRepository {
         .flatMap(groupedFlux -> groupedFlux.count().map(count -> 
             (java.util.Map.Entry<String, Integer>) new java.util.AbstractMap.SimpleEntry<>(groupedFlux.key(), count.intValue())))
         .subscribeOn(Schedulers.boundedElastic());
+    }
+    
+    @Override
+    public Flux<Todo> findByTaskIdPagedSorted(String taskId, int offset, int limit, TodoSortKey sortKey, boolean desc) {
+        return Mono.fromSupplier(() -> {
+            LambdaQueryWrapper<Todo> qw = new LambdaQueryWrapper<>();
+            if (taskId != null) {
+                qw.eq(Todo::getTaskId, taskId);
+            }
+            if (desc) qw.orderByDesc(sortKey.getter()); else qw.orderByAsc(sortKey.getter());
+            qw.last("LIMIT " + Math.max(limit, 1) + " OFFSET " + Math.max(offset, 0));
+            return todoMapper.selectList(qw);
+        }).flatMapMany(Flux::fromIterable);
     }
 }

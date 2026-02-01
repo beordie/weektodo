@@ -43,4 +43,7 @@ public interface TodoRepository {
     
     // 根据任务ID和listId范围查询待办事项并按listId分组统计数量
     Flux<java.util.Map.Entry<String, Integer>> findByTaskIdAndListIdGreaterThanGroupByListId(String taskId, String listId);
+    
+    // 根据任务ID分页查询待办事项，支持排序（参数已在服务层归一化）
+    Flux<Todo> findByTaskIdPagedSorted(String taskId, int offset, int limit, beordie.cn.model.TodoSortKey sortKey, boolean desc);
 }

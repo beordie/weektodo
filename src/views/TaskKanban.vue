@@ -309,7 +309,7 @@
         <a href="#" class="view-all-link">查看全部</a>
       </div>
       <div class="task-list">
-        <template v-if="filteredTasks && filteredTasks.length > 0">
+        <template v-if="getRecentTodosLimited().length > 0">
           <div 
             v-for="(task, index) in getRecentTodosLimited()" 
             :key="task.id || index"
@@ -319,7 +319,7 @@
               type="checkbox" 
               :id="`recent-task-${index}`" 
               class="task-checkbox"
-              :checked="task.completed === 1"
+              :checked="!!task.completed"
               disabled
             >
             <div class="task-content">
@@ -822,6 +822,7 @@
 import moment from 'moment';
 import configAPI from '../helpers/api/configAPI';
 import taskAPI from '../helpers/api/taskAPI';
+import todoAPI from '../helpers/api/todoAPI';
 
 export default {
   name: 'TaskKanban',
@@ -837,6 +838,7 @@ export default {
         this.loadDashboardData();
         this.fetchMilestoneStats();
         this.fetchTrendKanban();
+        this.fetchRecentTodos();
       }
     },
     selectedTrend() {
@@ -851,6 +853,7 @@ export default {
         this.fetchMilestoneStats();
         this.fetchTrendKanban();
         this.fetchTimeKanban();
+        this.fetchRecentTodos();
       }
     }
   },
@@ -879,6 +882,7 @@ export default {
       trendStats: [],
       timeKanbanLabels: [],
       timeKanbanValues: [],
+      recentTodosFromAPI: [], // 最近待办项（从后端接口获取）
       currentTask: {
         title: '',
         description: '',
@@ -1505,6 +1509,33 @@ export default {
           this.trendLabels = [];
         });
     },
+    // 获取最近待办项（分页接口）
+    fetchRecentTodos() {
+      const params = { page: 0, size: 10, sortBy: 'create', sortOrder: 'desc' };
+      if (this.currentTaskId) {
+        params.taskId = this.currentTaskId;
+      }
+      todoAPI.getAllPaged(params)
+        .then(response => {
+          if (Array.isArray(response)) {
+            // 适配后端Todo结构到当前UI结构
+            this.recentTodosFromAPI = response.map(t => ({
+              id: t.id,
+              title: t.text,
+              desc: t.description,
+              createdAt: t.createdAt,
+              completed: t.checked === 1,
+              time: t.time ? { start: t.time.start, end: t.time.end } : null,
+              subtasks: Array.isArray(t.subTodos) ? t.subTodos.map(st => st.text).filter(Boolean) : []
+            }));
+          } else {
+            this.recentTodosFromAPI = [];
+          }
+        })
+        .catch(() => {
+          this.recentTodosFromAPI = [];
+        });
+    },
     fetchTimeKanban() {
       if (!this.currentTaskId) {
         return;
@@ -1564,11 +1595,14 @@ export default {
     
     // 获取最近待办项
     getRecentTodos() {
-      // 如果dashboardData存在且包含待办项数据，则返回
+      // 优先使用后端recent接口数据
+      if (Array.isArray(this.recentTodosFromAPI) && this.recentTodosFromAPI.length > 0) {
+        return this.recentTodosFromAPI;
+      }
+      // 兼容旧数据结构
       if (this.dashboardData && this.dashboardData.todos) {
         return this.dashboardData.todos;
       }
-      // 如果没有数据，返回空数组
       return [];
     },
     

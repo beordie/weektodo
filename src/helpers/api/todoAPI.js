@@ -11,6 +11,17 @@ export const todoAPI = {
   getAll() {
     return request('/todos');
   },
+  /**
+   * 分页获取待办事项，支持排序
+   * @param {{page:number,size:number,sortBy?:string,sortOrder?:'asc'|'desc',taskId?:string}} params
+   */
+  getAllPaged(params) {
+    const q = new URLSearchParams();
+    if (typeof params.page === 'number') q.set('page', String(params.page));
+    if (typeof params.size === 'number') q.set('size', String(params.size));
+    if (params.taskId) q.set('taskId', params.taskId);
+    return request(`/todos?${q.toString()}`);
+  },
   
   /**
    * 根据ID获取待办事项

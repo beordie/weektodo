@@ -2,6 +2,8 @@ package beordie.cn.handler;
 
 import beordie.cn.model.Todo;
 import beordie.cn.service.TodoService;
+import beordie.cn.web.PageQuery;
+import beordie.cn.web.TodoPageQuery;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
@@ -22,8 +24,8 @@ public class TodoHandler {
 
     // 获取所有待办事项
     public Mono<ServerResponse> getAllTodos(ServerRequest request) {
-        return ServerResponse.ok()
-                .body(todoService.getAllTodos(), Todo.class);
+        TodoPageQuery q = TodoPageQuery.from(request);
+        return ServerResponse.ok().body(todoService.getTodos(q), Todo.class);
     }
 
     // 根据ID获取待办事项
@@ -99,4 +101,5 @@ public class TodoHandler {
                 .switchIfEmpty(ServerResponse.notFound().build())
                 .onErrorResume(IllegalArgumentException.class, e -> ServerResponse.badRequest().body(fromValue(e.getMessage())));
     }
+    
 }

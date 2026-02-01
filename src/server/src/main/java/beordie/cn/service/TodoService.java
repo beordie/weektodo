@@ -1,6 +1,7 @@
 package beordie.cn.service;
 
 import beordie.cn.model.Todo;
+import beordie.cn.model.TodoSortKey;
 import beordie.cn.repository.TodoRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -34,13 +35,6 @@ public class TodoService {
                     .defaultIfEmpty(todo); // 如果task不存在，返回原始todo
         }
         return Mono.just(todo); // 如果没有taskId，直接返回原始todo
-    }
-
-    // 获取所有待办事项
-    public Flux<Todo> getAllTodos() {
-        return todoRepository.findAll()
-                .flatMap(this::setTaskTitleForTodo)
-                .sort();
     }
 
     // 根据ID获取待办事项
@@ -206,5 +200,16 @@ public class TodoService {
                     return timeCacheService.handleTodoStatusChange(updatedTodo)
                             .thenReturn(updatedTodo);
                 });
+    }
+    
+    public Flux<Todo> getTodos(beordie.cn.web.TodoPageQuery q) {
+        TodoSortKey sortKey = TodoSortKey.from(q.getSortBy());
+        return todoRepository.findByTaskIdPagedSorted(q.getTaskId(), q.offset(), q.limit(), sortKey, q.desc());
+    }
+    
+    // 获取所有待办事项
+    public Flux<Todo> getAllTodos() {
+        return todoRepository.findAll()
+                .flatMap(this::setTaskTitleForTodo);
     }
 }
