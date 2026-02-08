@@ -107,8 +107,6 @@ import { RRule, rrulestr } from "rrule";
 import repeatingEventRepository from "../../repositories/repeatingEventRepository";
 import moment from "moment";
 import { Dropdown } from "bootstrap";
-import repeatingEventHelper from "../../helpers/repeatingEvents.js";
-import repeatingEventByDateRepository from "../../repositories/repeatingEventByDateRepository";
 
 export default {
   name: "RepatingEvent",
@@ -136,15 +134,8 @@ export default {
         let date = this.todo.listId;
         var re_by_date = this.$store.getters.repeatingEventByDate[date];
         if (!re_by_date) re_by_date = {};
-        re_by_date[repeatingEventId] = true;
-        repeatingEventByDateRepository.update(date, re_by_date);
         const re_event = this.generateRepeatingEvent(rule, repeatingEventId);
-        repeatingEventRepository.update(repeatingEventId, re_event);
-        this.$store.commit("updateRepeatingEvent", { key: repeatingEventId, val: re_event });
-        this.$store.commit("addRepeatingEventToDateCache", re_event);
-        this.$store.getters.selectedDates.forEach((date) => {
-          repeatingEventHelper.generateRepeatingEventsIntances(date, this);
-        });
+        this.$store.dispatch("createRepeatingEvent", { todoId: this.todo.id, re_event, listId: date }).catch(() => {});
       } else {
         repeatingEventRepository.remove(repeatingEventId);
         repeatingEventId = null;
@@ -162,6 +153,9 @@ export default {
       let dropdown = new Dropdown(reDropDown);
       dropdown.hide();
       this.$emit("repeatingEventSelected", null);
+      if (this.todo && this.todo.id && this.repeatingEvent) {
+        this.$store.dispatch("deleteRepeatingEvent", { todoId: this.todo.id, id: this.repeatingEvent, listId: this.todo.listId }).catch(() => {});
+      }
     },
     repeatingEventRule() {
       if (!this.repeatingType) return null;

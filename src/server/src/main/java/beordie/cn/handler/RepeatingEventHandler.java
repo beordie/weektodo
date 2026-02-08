@@ -3,6 +3,8 @@ package beordie.cn.handler;
 import beordie.cn.model.RepeatingEvent;
 import beordie.cn.model.Todo;
 import beordie.cn.service.RepeatingEventService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.MediaType;
 import org.springframework.web.reactive.function.server.ServerRequest;
 import org.springframework.web.reactive.function.server.ServerResponse;
@@ -16,6 +18,8 @@ import static org.springframework.web.reactive.function.BodyInserters.fromValue;
  * 重复事件处理器
  */
 public class RepeatingEventHandler {
+    
+    private static final Logger logger = LoggerFactory.getLogger(RepeatingEventHandler.class);
     
     private final RepeatingEventService repeatingEventService;
     
@@ -50,12 +54,30 @@ public class RepeatingEventHandler {
      */
     public Mono<ServerResponse> createRepeatingEvent(ServerRequest request) {
         String todoId = request.pathVariable("todoId");
+        logger.info("Received request to create repeating event for todoId: {}", todoId);
+        
         return request.bodyToMono(RepeatingEvent.class)
-                .doOnNext(repeatingEvent -> repeatingEvent.setTodoId(todoId))
-                .flatMap(repeatingEventService::save)
-                .flatMap(savedEvent -> ServerResponse.ok()
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .body(fromValue(savedEvent)));
+                .doOnNext(repeatingEvent -> {
+                    logger.info("Parsed repeating event: {}", repeatingEvent);
+                    repeatingEvent.setTodoId(todoId);
+                    logger.info("Set todoId to repeating event: {}", repeatingEvent);
+                })
+                .flatMap(repeatingEvent -> {
+                    logger.info("Saving repeating event: {}", repeatingEvent);
+                    return repeatingEventService.save(repeatingEvent);
+                })
+                .doOnNext(savedEvent -> {
+                    logger.info("Saved repeating event successfully: {}", savedEvent);
+                })
+                .flatMap(savedEvent -> {
+                    logger.info("Preparing response with saved event: {}", savedEvent);
+                    return ServerResponse.ok()
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .body(fromValue(savedEvent));
+                })
+                .doOnError(error -> {
+                    logger.error("Error creating repeating event: {}", error.getMessage(), error);
+                });
     }
     
     /**

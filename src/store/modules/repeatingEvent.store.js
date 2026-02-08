@@ -1,4 +1,5 @@
 import dbRepository from "../../repositories/dbRepository";
+import todoAPI from "../../helpers/api/todoAPI";
 
 const state = {
   repeatingEventList: {},
@@ -79,6 +80,39 @@ const actions = {
         };
       };
     });
+  },
+  createRepeatingEvent({ dispatch }, { todoId, re_event, listId }) {
+    console.log('dispatch.createRepeatingEvent.input', { todoId, listId, re_event });
+    const payload = {
+      id: re_event.id,
+      startDate: re_event.start_date,
+      repeatingRule: re_event.repeating_rule,
+      type: parseInt(re_event.type, 10),
+      occurrencesType: re_event.ocurrencesType,
+      endDate: re_event.end_date,
+    };
+    console.log('dispatch.createRepeatingEvent.payload', payload);
+    return todoAPI.createRepeatingEvent(todoId, payload)
+      .then((res) => {
+        console.log('dispatch.createRepeatingEvent.result', res);
+        if (listId) return dispatch("loadTodoLists", listId);
+      })
+      .catch((err) => {
+        console.error('dispatch.createRepeatingEvent.error', err);
+        throw err;
+      });
+  },
+  deleteRepeatingEvent({ dispatch }, { todoId, id, listId }) {
+    console.log('dispatch.deleteRepeatingEvent.input', { todoId, id, listId });
+    return todoAPI.deleteRepeatingEvent(todoId, id)
+      .then((res) => {
+        console.log('dispatch.deleteRepeatingEvent.result', res);
+        if (listId) return dispatch("loadTodoLists", listId);
+      })
+      .catch((err) => {
+        console.error('dispatch.deleteRepeatingEvent.error', err);
+        throw err;
+      });
   },
 };
 

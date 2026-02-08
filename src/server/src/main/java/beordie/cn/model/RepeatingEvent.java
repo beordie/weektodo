@@ -35,7 +35,7 @@ public class RepeatingEvent {
     /**
      * 重复事件的类型
      */
-    private String type;
+    private Integer type;
     
     /**
      * 重复发生的类型，与重复规则相关
@@ -93,11 +93,11 @@ public class RepeatingEvent {
         this.repeatingRule = repeatingRule;
     }
 
-    public String getType() {
+    public int getType() {
         return type;
     }
 
-    public void setType(String type) {
+    public void setType(int type) {
         this.type = type;
     }
 

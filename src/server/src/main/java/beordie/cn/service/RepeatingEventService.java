@@ -67,12 +67,12 @@ public class RepeatingEventService {
             Set<String> eventIds = repeatingEventRepository.getRepeatingEventIdsByListId(listId);
             
             // 检查这些重复事件是否已经生成过Todo
-            List<Todo> existingTodos = todoRepository.findByListId(listId)
-                    .collectList()
-                    .block()
+            List<Todo> existingTodos = Objects.requireNonNull(todoRepository.findByListId(listId)
+                            .collectList()
+                            .block())
                     .stream()
                     .filter(todo -> todo.getRepeatingEventId() != null)
-                    .collect(Collectors.toList());
+                    .toList();
             
             Set<String> existingEventIds = existingTodos.stream()
                     .map(Todo::getRepeatingEventId)
@@ -83,12 +83,10 @@ public class RepeatingEventService {
                     .filter(eventId -> !existingEventIds.contains(eventId))
                     .map(eventId -> repeatingEventRepository.findById(eventId).block())
                     .filter(Objects::nonNull)
-                    .collect(Collectors.toList());
+                    .toList();
             
-            // 生成新的Todo实例
             List<Todo> newTodos = eventsToGenerate.stream()
-                    .map(event -> repeatingEventRepository.generateTodoFromRepeatingEvent(event, listId).block())
-                    .filter(Objects::nonNull)
+                    .map(event -> buildTodoFromEvent(event, listId))
                     .collect(Collectors.toList());
             
             // 保存新生成的Todo
@@ -96,5 +94,32 @@ public class RepeatingEventService {
             
             return newTodos;
         });
+    }
+    
+    private Todo buildTodoFromEvent(RepeatingEvent repeatingEvent, String listId) {
+        Todo origin = null;
+        if (repeatingEvent.getTodoId() != null && !repeatingEvent.getTodoId().isEmpty()) {
+            origin = this.todoRepository.findById(repeatingEvent.getTodoId()).block();
+        }
+        if (origin == null) {
+            return null;
+        }
+        Todo copy = new Todo();
+        copy.setText(origin.getText());
+        copy.setChecked(0);
+        copy.setListId(listId);
+        copy.setDescription(origin.getDescription());
+        copy.setSubTodos(origin.getSubTodos());
+        copy.setColor(origin.getColor());
+        copy.setPriority(origin.getPriority());
+        copy.setTags(origin.getTags());
+        copy.setTime(origin.getTime());
+        copy.setAlarm(origin.getAlarm());
+        copy.setRepeatingEventId(repeatingEvent.getId());
+        copy.setTaskId(origin.getTaskId());
+        copy.setMilestoneId(origin.getMilestoneId());
+        copy.setCreatedAt(java.time.LocalDateTime.now());
+        copy.setUpdatedAt(java.time.LocalDateTime.now());
+        return copy;
     }
 }

@@ -49,7 +49,11 @@ export async function request(endpoint, options = {}) {
     }
     
     // 解析响应数据
-    return await response.json();
+    const responseText = await response.text();
+    if (!responseText) {
+      return null;
+    }
+    return JSON.parse(responseText);
   } catch (error) {
     console.error('API请求错误:', error);
     throw error;

@@ -116,7 +116,22 @@ export const todoAPI = {
     return request(`/todos/${id}/subtask/${index}/toggle`, {
       method: 'PATCH'
     });
-  }
+  },
+  createRepeatingEvent(todoId, payload) {
+    return request(`/todos/${todoId}/repeating-events`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }).then((result) => {
+      console.log('后端返回结果:', result);
+    });
+  },
+  deleteRepeatingEvent(todoId, id) {
+    return request(`/todos/${todoId}/repeating-events/${id}`, {
+      method: "DELETE",
+    }).then((result) => {
+      console.log('删除重复事件后端返回结果:', result);
+    });
+  },
 };
 
 export default todoAPI;

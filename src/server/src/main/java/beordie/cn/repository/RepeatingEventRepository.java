@@ -45,12 +45,4 @@ public interface RepeatingEventRepository {
      * @return 重复事件ID集合
      */
     Set<String> getRepeatingEventIdsByListId(String listId);
-    
-    /**
-     * 根据重复事件生成Todo实例
-     * @param repeatingEvent 重复事件
-     * @param listId 目标日期ID
-     * @return 生成的Todo实例
-     */
-    Mono<Todo> generateTodoFromRepeatingEvent(RepeatingEvent repeatingEvent, String listId);
 }

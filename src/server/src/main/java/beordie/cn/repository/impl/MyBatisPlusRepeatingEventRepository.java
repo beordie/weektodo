@@ -84,40 +84,6 @@ public class MyBatisPlusRepeatingEventRepository implements RepeatingEventReposi
         return result;
     }
     
-    @Override
-    public Mono<Todo> generateTodoFromRepeatingEvent(RepeatingEvent repeatingEvent, String listId) {
-        return Mono.fromCallable(() -> {
-            Map<String, Object> data = repeatingEvent.getData();
-            
-            // 创建新的Todo实例
-            Todo todo = new Todo();
-            todo.setText((String) data.get("text"));
-            todo.setChecked(0); // 新生成的Todo默认为未完成
-            todo.setListId(listId);
-            todo.setDescription((String) data.get("desc"));
-            todo.setSubTodos((List<Todo.SubTodo>) data.get("subTaskList"));
-            todo.setColor((String) data.get("color"));
-            todo.setPriority((Integer) data.get("priority"));
-            Object tagsObj = data.get("tags");
-            if (tagsObj instanceof List) {
-                @SuppressWarnings("unchecked")
-                List<String> tags = (List<String>) tagsObj;
-                todo.setTags(tags);
-            } else {
-                todo.setTags(Collections.emptyList());
-            }
-            todo.setTime((Todo.Time) data.get("time"));
-            Boolean alarm = (Boolean) data.get("alarm");
-            todo.setAlarm(alarm != null ? (alarm ? 1 : 0) : null);
-            todo.setRepeatingEventId(repeatingEvent.getId());
-            todo.setTask((String) data.get("task"));
-            todo.setMilestone((String) data.get("milestone"));
-            todo.setCreatedAt(LocalDateTime.now());
-            todo.setUpdatedAt(LocalDateTime.now());
-            
-            return todo;
-        }).subscribeOn(Schedulers.boundedElastic());
-    }
     
     /**
      * 判断重复事件是否应该在指定日期生成
