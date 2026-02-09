@@ -114,29 +114,18 @@ export default {
 };
 </script>
 
-<style scoped>
+<style scoped lang="scss">
+@import "/src/assets/style/globalVars.scss";
 .task-selector-container {
   position: relative;
   display: inline-block;
 }
 
 .task-selector-trigger {
+  @include btn-icon;
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  padding: 5px;
-  
-  background-color: transparent;
-  color: #495057;
-  width: auto;
-  border-radius: 4px;
-  transition: background-color 0.2s;
-}
-
-.task-selector-trigger:hover {
-  background-color: #f8f9fa;
-  border-radius: 5%;
+  white-space: nowrap;
 }
 
 .selected-task-text {

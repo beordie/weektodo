@@ -132,6 +132,9 @@ export const todoAPI = {
       console.log('删除重复事件后端返回结果:', result);
     });
   },
+  getRepeatingEvent(todoId, id) {
+    return request(`/todos/${todoId}/repeating-events/${id}`);
+  },
 };
 
 export default todoAPI;

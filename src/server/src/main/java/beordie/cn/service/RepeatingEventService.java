@@ -9,6 +9,14 @@ import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import net.fortuna.ical4j.model.DateList;
+import net.fortuna.ical4j.model.DateTime;
+import net.fortuna.ical4j.model.Recur;
+import net.fortuna.ical4j.model.parameter.Value;
+import java.time.LocalDate;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
+import java.util.Date;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -42,6 +50,16 @@ public class RepeatingEventService {
         return repeatingEventRepository.findById(id);
     }
     
+    public Mono<RepeatingEvent> getByTodoAndEventId(String todoId, String eventId) {
+        return todoRepository.findById(todoId)
+                .flatMap(todo -> {
+                    if (todo != null && eventId != null && eventId.equals(todo.getRepeatingEventId())) {
+                        return repeatingEventRepository.findById(eventId);
+                    }
+                    return Mono.empty();
+                });
+    }
+    
     /**
      * 获取所有重复事件
      */
@@ -63,10 +81,7 @@ public class RepeatingEventService {
      */
     public Mono<List<Todo>> generateTodosForDate(String listId) {
         return Mono.fromCallable(() -> {
-            // 获取该日期应该生成的重复事件ID
-            Set<String> eventIds = repeatingEventRepository.getRepeatingEventIdsByListId(listId);
-            
-            // 检查这些重复事件是否已经生成过Todo
+            LocalDate targetDate = LocalDate.parse(listId, DateTimeFormatter.BASIC_ISO_DATE);
             List<Todo> existingTodos = Objects.requireNonNull(todoRepository.findByListId(listId)
                             .collectList()
                             .block())
@@ -78,18 +93,16 @@ public class RepeatingEventService {
                     .map(Todo::getRepeatingEventId)
                     .collect(Collectors.toSet());
             
-            // 获取需要生成的新重复事件
-            List<RepeatingEvent> eventsToGenerate = eventIds.stream()
-                    .filter(eventId -> !existingEventIds.contains(eventId))
-                    .map(eventId -> repeatingEventRepository.findById(eventId).block())
-                    .filter(Objects::nonNull)
+            List<RepeatingEvent> allEvents = Objects.requireNonNull(repeatingEventRepository.findAll().collectList().block());
+            List<RepeatingEvent> eventsToGenerate = allEvents.stream()
+                    .filter(e -> occursOnDate(e, targetDate))
+                    .filter(e -> !existingEventIds.contains(e.getId()))
                     .toList();
             
             List<Todo> newTodos = eventsToGenerate.stream()
                     .map(event -> buildTodoFromEvent(event, listId))
                     .collect(Collectors.toList());
             
-            // 保存新生成的Todo
             newTodos.forEach(todo -> todoRepository.save(todo).block());
             
             return newTodos;
@@ -121,5 +134,29 @@ public class RepeatingEventService {
         copy.setCreatedAt(java.time.LocalDateTime.now());
         copy.setUpdatedAt(java.time.LocalDateTime.now());
         return copy;
+    }
+
+    private boolean occursOnDate(RepeatingEvent event, LocalDate date) {
+        if (event == null || event.getRepeatingRule() == null || event.getStartDate() == null) {
+            return false;
+        }
+        if (event.getEndDate() != null) {
+            LocalDate end = event.getEndDate().toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
+            if (date.isAfter(end)) {
+                return false;
+            }
+        }
+        try {
+            Recur recur = new Recur(event.getRepeatingRule());
+            DateTime dtStart = new DateTime(event.getStartDate());
+            Date dayStartUtil = Date.from(date.atStartOfDay(ZoneId.systemDefault()).toInstant());
+            Date dayEndUtil = Date.from(date.plusDays(1).atStartOfDay(ZoneId.systemDefault()).toInstant());
+            DateTime periodStart = new DateTime(dayStartUtil);
+            DateTime periodEnd = new DateTime(dayEndUtil);
+            DateList dates = recur.getDates(dtStart, periodStart, periodEnd, Value.DATE_TIME);
+            return dates != null && !dates.isEmpty();
+        } catch (Exception ex) {
+            return false;
+        }
     }
 }

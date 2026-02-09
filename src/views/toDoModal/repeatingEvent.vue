@@ -107,6 +107,7 @@ import { RRule, rrulestr } from "rrule";
 import repeatingEventRepository from "../../repositories/repeatingEventRepository";
 import moment from "moment";
 import { Dropdown } from "bootstrap";
+import todoAPI from "../../helpers/api/todoAPI";
 
 export default {
   name: "RepatingEvent",
@@ -125,6 +126,33 @@ export default {
   props: {
     repeatingEvent: { required: true, type: [String, null] },
     todo: { required: true, type: [Object, null] },
+  },
+  mounted() {
+    if (this.repeatingEvent && this.todo && this.todo.id) {
+      todoAPI.getRepeatingEvent(this.todo.id, this.repeatingEvent).then((re) => {
+        const rule = rrulestr(re.repeatingRule);
+        this.repeatingType = rule.options.freq;
+        this.interval = rule.options.interval;
+        this.ocurrences = rule.options.count;
+        this.ocurrencesType = re.occurrencesType;
+        this.untilDate = rule.options.until ? rule.options.until.toLocaleDateString("en-GB").split("/").reverse().join("-") : null;
+        this.weekdays = { mon: false, tue: false, wed: false, thu: false, fri: false, sat: false, sun: false };
+        if (rule.options.byweekday) {
+          rule.options.byweekday.includes(0) && (this.weekdays.mon = true);
+          rule.options.byweekday.includes(1) && (this.weekdays.tue = true);
+          rule.options.byweekday.includes(2) && (this.weekdays.wed = true);
+          rule.options.byweekday.includes(3) && (this.weekdays.thu = true);
+          rule.options.byweekday.includes(4) && (this.weekdays.fri = true);
+          rule.options.byweekday.includes(5) && (this.weekdays.sat = true);
+          rule.options.byweekday.includes(6) && (this.weekdays.sun = true);
+          this.repeatingType = 5;
+        }
+        if (rule.options.bymonthday && rule.options.bymonthday.length > 0) {
+          this.repeatingType = 6;
+          this.daysOfMonth = rule.options.bymonthday.join(",");
+        }
+      });
+    }
   },
   methods: {
     done() {
@@ -227,31 +255,30 @@ export default {
   },
   watch: {
     repeatingEvent: function (newVal) {
-      let re = this.$store.getters.repeatingEventList[newVal];
       this.weekdays = { mon: false, tue: false, wed: false, thu: false, fri: false, sat: false, sun: false };
-      if (re) {
-        const rule = rrulestr(re.repeating_rule);
-        this.repeatingType = rule.options.freq;
-        this.interval = rule.options.interval;
-        this.ocurrences = rule.options.count;
-        this.ocurrencesType = re.ocurrencesType;
-        this.untilDate = rule.options.until
-          ? rule.options.until.toLocaleDateString("en-GB").split("/").reverse().join("-")
-          : null;
-        if (rule.options.byweekday) {
-          rule.options.byweekday.includes(0) && (this.weekdays.mon = true);
-          rule.options.byweekday.includes(1) && (this.weekdays.tue = true);
-          rule.options.byweekday.includes(2) && (this.weekdays.wed = true);
-          rule.options.byweekday.includes(3) && (this.weekdays.thu = true);
-          rule.options.byweekday.includes(4) && (this.weekdays.fri = true);
-          rule.options.byweekday.includes(5) && (this.weekdays.sat = true);
-          rule.options.byweekday.includes(6) && (this.weekdays.sun = true);
-          this.repeatingType = 5;
-        }
-        if (rule.options.bymonthday.length > 0) {
-          this.repeatingType = 6;
-          this.daysOfMonth = rule.options.bymonthday.join(",");
-        }
+      if (newVal && this.todo && this.todo.id) {
+        todoAPI.getRepeatingEvent(this.todo.id, newVal).then((re) => {
+          const rule = rrulestr(re.repeatingRule);
+          this.repeatingType = rule.options.freq;
+          this.interval = rule.options.interval;
+          this.ocurrences = rule.options.count;
+          this.ocurrencesType = re.occurrencesType;
+          this.untilDate = rule.options.until ? rule.options.until.toLocaleDateString("en-GB").split("/").reverse().join("-") : null;
+          if (rule.options.byweekday) {
+            rule.options.byweekday.includes(0) && (this.weekdays.mon = true);
+            rule.options.byweekday.includes(1) && (this.weekdays.tue = true);
+            rule.options.byweekday.includes(2) && (this.weekdays.wed = true);
+            rule.options.byweekday.includes(3) && (this.weekdays.thu = true);
+            rule.options.byweekday.includes(4) && (this.weekdays.fri = true);
+            rule.options.byweekday.includes(5) && (this.weekdays.sat = true);
+            rule.options.byweekday.includes(6) && (this.weekdays.sun = true);
+            this.repeatingType = 5;
+          }
+          if (rule.options.bymonthday && rule.options.bymonthday.length > 0) {
+            this.repeatingType = 6;
+            this.daysOfMonth = rule.options.bymonthday.join(",");
+          }
+        });
       } else {
         this.repeatingType = "";
         this.ocurrencesType = "";

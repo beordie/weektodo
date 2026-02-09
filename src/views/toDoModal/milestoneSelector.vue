@@ -138,35 +138,24 @@ export default {
     },
     truncateTitle(str) {
       if (!str) return '';
-      return str.length > 5 ? str.slice(0, 5) + '…' : str;
+      return str.length > 4 ? str.slice(0, 4) + '…' : str;
     }
   }
 };
 </script>
 
-<style scoped>
+<style scoped lang="scss">
+@import "/src/assets/style/globalVars.scss";
 .milestone-selector-container {
   position: relative;
   display: inline-block;
 }
 
 .milestone-selector-trigger {
+  @include btn-icon;
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  padding: 5px;
-  
-  background-color: transparent;
-  color: #495057;
-  width: auto;
-  border-radius: 4px;
-  transition: background-color 0.2s;
-}
-
-.milestone-selector-trigger:hover {
-  background-color: #f8f9fa;
-  border-radius: 5%;
+  white-space: nowrap;
 }
 
 .selected-milestone-text {

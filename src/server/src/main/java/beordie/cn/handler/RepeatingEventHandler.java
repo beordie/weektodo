@@ -42,7 +42,7 @@ public class RepeatingEventHandler {
     public Mono<ServerResponse> getRepeatingEventById(ServerRequest request) {
         String todoId = request.pathVariable("todoId");
         String id = request.pathVariable("id");
-        return repeatingEventService.getById(id)
+        return repeatingEventService.getByTodoAndEventId(todoId, id)
                 .flatMap(repeatingEvent -> ServerResponse.ok()
                         .contentType(MediaType.APPLICATION_JSON)
                         .body(fromValue(repeatingEvent)))
