@@ -143,15 +143,7 @@ const actions = {
       // 调用API获取待办事项列表
       todoAPI.getTodosByListId(todoListId)
         .then((todoList) => {
-          // 使用Todo模型标准化数据结构
-          const processedTodoList = todoList.map(item => {
-            if (!item.id) {
-              // 生成唯一id
-              item.id = Date.now().toString() + Math.random().toString(36).substring(2, 9);
-            }
-            return Todo.fromJson(item);
-          });
-          commit("loadTodoLists", { todoListId: todoListId, todoList: processedTodoList });
+          commit("loadTodoLists", { todoListId: todoListId, todoList: todoList });
           resolve();
         })
         .catch((error) => {
@@ -160,48 +152,7 @@ const actions = {
           reject(error);
         });
     });
-  },
-  
-  // 加载所有todo列表数据
-  loadAllTodoLists({ commit }) {
-    return new Promise((resolve, reject) => {
-      // 调用API获取所有待办事项列表
-      todoAPI.getAll()
-        .then((todos) => {
-          // 使用Todo模型标准化数据结构
-          const processedTodos = todos.map(todo => {
-            if (!todo.id) {
-              // 生成唯一id
-              todo.id = Date.now().toString() + Math.random().toString(36).substring(2, 9);
-            }
-            return Todo.fromJson(todo);
-          });
-          
-          // 按列表ID分组待办事项
-          const todoLists = processedTodos.reduce((acc, todo) => {
-            const listId = todo.listId;
-            if (!acc[listId]) {
-              acc[listId] = [];
-            }
-            acc[listId].push(todo);
-            return acc;
-          }, {});
-          
-          // 遍历所有列表并提交到state
-           for (let todoListId in todoLists) {
-             if (Object.prototype.hasOwnProperty.call(todoLists, todoListId)) {
-              commit("loadTodoLists", { todoListId: todoListId, todoList: todoLists[todoListId] });
-            }
-          }
-          resolve(todoLists);
-        })
-        .catch((error) => {
-          console.error("获取所有待办事项列表失败:", error);
-          // API调用失败，不再从本地数据库获取
-          reject(error);
-        });
-    });
-  },
+  }
 };
 
 export default {
