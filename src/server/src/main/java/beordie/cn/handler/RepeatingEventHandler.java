@@ -98,16 +98,4 @@ public class RepeatingEventHandler {
         return repeatingEventService.deleteById(id)
                 .then(ServerResponse.noContent().build());
     }
-    
-    /**
-     * 根据日期生成重复事件对应的Todo
-     */
-    public Mono<ServerResponse> generateTodosForDate(ServerRequest request) {
-        String todoId = request.pathVariable("todoId");
-        String listId = request.pathVariable("listId");
-        return repeatingEventService.generateTodosForDate(listId)
-                .flatMap(todos -> ServerResponse.ok()
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .body(fromValue(todos)));
-    }
 }

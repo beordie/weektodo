@@ -396,6 +396,19 @@ public class Todo implements CheckStatus, Comparable<Todo> {
                 return null;
             }
         }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+            Time that = (Time) o;
+            return this.compareTo(that) == 0;
+        }
+
+        @Override
+        public int hashCode() {
+            return java.util.Objects.hash(this.start);
+        }
     }
 
     // Getter and Setter methods for Todo class
@@ -541,6 +554,22 @@ public class Todo implements CheckStatus, Comparable<Todo> {
 
     public void setUpdatedAt(LocalDateTime updatedAt) {
         this.updatedAt = updatedAt;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        Todo that = (Todo) o;
+        return java.util.Objects.equals(this.text, that.text)
+                && java.util.Objects.equals(this.listId, that.listId);
+    }
+
+    @Override
+    public int hashCode() {
+        return java.util.Objects.hash(
+                this.text,
+                this.listId);
     }
 
     @Override

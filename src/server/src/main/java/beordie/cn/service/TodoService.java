@@ -14,13 +14,15 @@ public class TodoService {
     private final TaskService taskService;
     private final MilestoneService milestoneService;
     private final TimeCacheService timeCacheService;
+    private final RepeatingEventService repeatingEventService;
 
     @Autowired
-    public TodoService(TodoRepository todoRepository, TaskService taskService, MilestoneService milestoneService, TimeCacheService timeCacheService) {
+    public TodoService(TodoRepository todoRepository, TaskService taskService, MilestoneService milestoneService, TimeCacheService timeCacheService, RepeatingEventService repeatingEventService) {
         this.todoRepository = todoRepository;
         this.taskService = taskService;
         this.milestoneService = milestoneService;
         this.timeCacheService = timeCacheService;
+        this.repeatingEventService = repeatingEventService;
     }
 
     // 辅助方法：根据taskId查询task title和color并赋值给Todo的task和color字段
@@ -47,6 +49,14 @@ public class TodoService {
     public Flux<Todo> getTodosByListId(String listId) {
         return todoRepository.findByListId(listId)
                 .flatMap(this::setTaskTitleForTodo)
+                .filterWhen(todo -> {
+                    if (todo.getRepeatingEventId() == null || todo.getRepeatingEventId().isBlank()) {
+                        return Mono.just(true);
+                    }
+                    return repeatingEventService.getById(todo.getRepeatingEventId())
+                            .hasElement()
+                            .defaultIfEmpty(false);
+                })
                 .sort();
     }
 
@@ -163,7 +173,15 @@ public class TodoService {
 
     // 删除待办事项
     public Mono<Void> deleteTodo(String id) {
-        return todoRepository.deleteById(id);
+        return todoRepository.findById(id)
+                .flatMap(todo -> {
+                    Mono<Void> deleteRepeat = Mono.empty();
+                    if (todo.getRepeatingEventId() != null && !todo.getRepeatingEventId().isEmpty()) {
+                        deleteRepeat = repeatingEventService.deleteById(todo.getRepeatingEventId());
+                    }
+                    return deleteRepeat.then(todoRepository.deleteById(id));
+                })
+                .switchIfEmpty(todoRepository.deleteById(id));
     }
 
     // 根据列表ID删除待办事项

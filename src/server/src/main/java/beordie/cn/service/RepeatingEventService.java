@@ -4,7 +4,8 @@ import beordie.cn.model.RepeatingEvent;
 import beordie.cn.model.Todo;
 import beordie.cn.repository.RepeatingEventRepository;
 import beordie.cn.repository.TodoRepository;
-import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -28,6 +29,7 @@ import java.util.stream.Collectors;
 @Service
 public class RepeatingEventService {
     
+    private static final Logger log = LoggerFactory.getLogger(RepeatingEventService.class);
     private final RepeatingEventRepository repeatingEventRepository;
     private final TodoRepository todoRepository;
     
@@ -79,31 +81,49 @@ public class RepeatingEventService {
      */
     public Mono<List<Todo>> generateTodosForDate(String listId) {
         return Mono.fromCallable(() -> {
+            log.info("=================================");
+            log.info("RepeatingEventService.generateTodosForDate: Starting for listId {}", listId);
+            log.info("=================================");
+            
             LocalDate targetDate = LocalDate.parse(listId, DateTimeFormatter.BASIC_ISO_DATE);
+            log.info("RepeatingEventService: targetDate {}", targetDate);
+            
             List<Todo> existingTodos = Objects.requireNonNull(todoRepository.findByListId(listId)
                             .collectList()
                             .block())
                     .stream()
-                    .filter(todo -> todo.getRepeatingEventId() != null)
                     .toList();
-            
-            Set<String> existingEventIds = existingTodos.stream()
-                    .map(Todo::getRepeatingEventId)
-                    .collect(Collectors.toSet());
-            
+            log.info("RepeatingEventService: existingTodos: {}", existingTodos.size());
+
             List<RepeatingEvent> allEvents = Objects.requireNonNull(repeatingEventRepository.findAll().collectList().block());
-            List<RepeatingEvent> eventsToGenerate = allEvents.stream()
+            log.info("RepeatingEventService: allEvents from DB: {}", allEvents.size());
+
+            // 1) 预设当天规则内的事件，先构建内存中的待创建 Todo（不触发数据库）
+            List<RepeatingEvent> occurEvents = allEvents.stream()
                     .filter(e -> occursOnDate(e, targetDate))
-                    .filter(e -> !existingEventIds.contains(e.getId()))
                     .toList();
-            
-            List<Todo> newTodos = eventsToGenerate.stream()
+            log.info("RepeatingEventService: occurEvents on targetDate: {}", occurEvents.size());
+
+            List<Todo> preCreatedTodos = occurEvents.stream()
                     .map(event -> buildTodoFromEvent(event, listId))
+                    .filter(Objects::nonNull)
+                    .toList();
+            log.info("RepeatingEventService: preCreatedTodos: {}", preCreatedTodos.size());
+
+            // 2) 与当天已存在的 Todo 进行对比（按 repeatingEventId），剔除重复项
+            List<Todo> needCreate = preCreatedTodos.stream()
+                    .filter(t -> existingTodos.stream().noneMatch(todo -> todo.equals(t)))
                     .collect(Collectors.toList());
+            log.info("RepeatingEventService: needCreate after deduplication: {}", needCreate.size());
+
+            // 3) 将剩余的预创建 Todo 插入数据库
+            log.info("RepeatingEventService: Saving {} todos to DB", needCreate.size());
+            needCreate.forEach(todo -> {
+                todoRepository.save(todo).block();
+            });
             
-            newTodos.forEach(todo -> todoRepository.save(todo).block());
-            
-            return newTodos;
+            log.info("RepeatingEventService.generateTodosForDate: Done, generated {} todos", needCreate.size());
+            return needCreate;
         });
     }
     
@@ -120,18 +140,35 @@ public class RepeatingEventService {
         copy.setChecked(0);
         copy.setListId(listId);
         copy.setDescription(origin.getDescription());
-        copy.setSubTodos(origin.getSubTodos());
         copy.setColor(origin.getColor());
         copy.setPriority(origin.getPriority());
         copy.setTags(origin.getTags());
         copy.setTime(origin.getTime());
         copy.setAlarm(origin.getAlarm());
-        copy.setRepeatingEventId(repeatingEvent.getId());
         copy.setTaskId(origin.getTaskId());
         copy.setMilestoneId(origin.getMilestoneId());
         copy.setCreatedAt(java.time.LocalDateTime.now());
         copy.setUpdatedAt(java.time.LocalDateTime.now());
         return copy;
+    }
+
+    private String cleanRepeatingRule(String rawRule) {
+        if (rawRule == null || rawRule.isBlank()) {
+            return rawRule;
+        }
+        // 去掉前面的 DTSTART 等前缀，只保留 RRULE 部分或整行中的规则
+        for (String line : rawRule.split("[\\r\\n]+")) {
+            String trimmed = line.trim();
+            if (trimmed.startsWith("RRULE:")) {
+                return trimmed.substring("RRULE:".length()).trim();
+            }
+            if (!trimmed.contains(":")) {
+                // 没有前缀，直接返回
+                return trimmed;
+            }
+        }
+        // fallback：返回原值
+        return rawRule;
     }
 
     private boolean occursOnDate(RepeatingEvent event, LocalDate date) {
@@ -145,7 +182,9 @@ public class RepeatingEventService {
             }
         }
         try {
-            Recur recur = new Recur(event.getRepeatingRule());
+            String ruleStr = cleanRepeatingRule(event.getRepeatingRule());
+            log.info("RepeatingEventService.occursOnDate: clean rule='{}'", ruleStr);
+            Recur recur = new Recur(ruleStr);
             DateTime dtStart = new DateTime(event.getStartDate());
             Date dayStartUtil = Date.from(date.atStartOfDay(ZoneId.systemDefault()).toInstant());
             Date dayEndUtil = Date.from(date.plusDays(1).atStartOfDay(ZoneId.systemDefault()).toInstant());

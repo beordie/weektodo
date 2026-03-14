@@ -37,7 +37,6 @@ public class TodoRouterConfig {
                 .andRoute(GET("/api/todos/{todoId}/repeating-events/{id}"), repeatingEventHandler::getRepeatingEventById)
                 .andRoute(POST("/api/todos/{todoId}/repeating-events"), repeatingEventHandler::createRepeatingEvent)
                 .andRoute(DELETE("/api/todos/{todoId}/repeating-events/{id}"), repeatingEventHandler::deleteRepeatingEvent)
-                .andRoute(POST("/api/todos/{todoId}/repeating-events/generate/{listId}"), repeatingEventHandler::generateTodosForDate)
                 // 根据ID获取待办事项
                 .andRoute(GET("/api/todos/{id}").and(accept(APPLICATION_JSON)), todoHandler::getTodoById)
                 // 根据列表ID获取待办事项
