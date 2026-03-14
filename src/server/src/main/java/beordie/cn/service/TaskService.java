@@ -511,10 +511,10 @@ public class TaskService {
                     return result;
                 })
                 .map(values -> {
-                    // 保留一位小数
+                    // 保留两位小数
                     double[] rounded = new double[values.length];
                     for (int i = 0; i < values.length; i++) {
-                        rounded[i] = Math.round(values[i] * 10.0) / 10.0;
+                        rounded[i] = Math.round(values[i] * 100.0) / 100.0;
                     }
                     java.util.Map<String, Object> resp = new java.util.LinkedHashMap<>();
                     resp.put("labels", labels);

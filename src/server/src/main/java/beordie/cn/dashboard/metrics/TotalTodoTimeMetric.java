@@ -37,6 +37,10 @@ public class TotalTodoTimeMetric extends AbstractDashboardMetricCalculator {
             total += ctx.getTimeCacheService().getTaskTotalTimeInHours(task.getId()).blockOptional().orElse(0.0);;
         }
 
+        // 保留两位小数，使用DecimalFormat确保精度
+        java.text.DecimalFormat df = new java.text.DecimalFormat("#.##");
+        total = Double.parseDouble(df.format(total));
+
         DashboardStat stat = new DashboardStat();
         stat.setId(id());
         DashboardMetricConfig cfg = getCfg();

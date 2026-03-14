@@ -51,13 +51,11 @@ public class RepeatingEventService {
     }
     
     public Mono<RepeatingEvent> getByTodoAndEventId(String todoId, String eventId) {
-        return todoRepository.findById(todoId)
-                .flatMap(todo -> {
-                    if (todo != null && eventId != null && eventId.equals(todo.getRepeatingEventId())) {
-                        return repeatingEventRepository.findById(eventId);
-                    }
-                    return Mono.empty();
-                });
+        if (eventId == null || eventId.isEmpty()) {
+            return Mono.empty();
+        }
+        return repeatingEventRepository.findById(eventId)
+                .filter(ev -> ev != null && ev.getTodoId() != null && ev.getTodoId().equals(todoId));
     }
     
     /**

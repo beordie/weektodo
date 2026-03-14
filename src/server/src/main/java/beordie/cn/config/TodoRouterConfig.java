@@ -32,6 +32,12 @@ public class TodoRouterConfig {
         return RouterFunctions
                 // 获取所有待办事项
                 .route(GET("/api/todos").and(accept(APPLICATION_JSON)), todoHandler::getAllTodos)
+                // 重复事件相关路由（需放在 /api/todos/{id} 之前，避免被通配匹配）
+                .andRoute(GET("/api/todos/repeating-events"), repeatingEventHandler::getAllRepeatingEvents)
+                .andRoute(GET("/api/todos/{todoId}/repeating-events/{id}"), repeatingEventHandler::getRepeatingEventById)
+                .andRoute(POST("/api/todos/{todoId}/repeating-events"), repeatingEventHandler::createRepeatingEvent)
+                .andRoute(DELETE("/api/todos/{todoId}/repeating-events/{id}"), repeatingEventHandler::deleteRepeatingEvent)
+                .andRoute(POST("/api/todos/{todoId}/repeating-events/generate/{listId}"), repeatingEventHandler::generateTodosForDate)
                 // 根据ID获取待办事项
                 .andRoute(GET("/api/todos/{id}").and(accept(APPLICATION_JSON)), todoHandler::getTodoById)
                 // 根据列表ID获取待办事项
@@ -49,12 +55,6 @@ public class TodoRouterConfig {
                 // 切换待办事项的完成状态
                 .andRoute(PATCH("/api/todos/{id}/toggle"), todoHandler::toggleTodo)
                 // 切换子任务的完成状态
-                .andRoute(PATCH("/api/todos/{id}/subtask/{index}/toggle"), todoHandler::toggleSubTask)
-                // 重复事件相关路由
-                .andRoute(GET("/api/todos/repeating-events"), repeatingEventHandler::getAllRepeatingEvents)
-                .andRoute(GET("/api/todos/{todoId}/repeating-events/{id}"), repeatingEventHandler::getRepeatingEventById)
-                .andRoute(POST("/api/todos/{todoId}/repeating-events"), repeatingEventHandler::createRepeatingEvent)
-                .andRoute(DELETE("/api/todos/{todoId}/repeating-events/{id}"), repeatingEventHandler::deleteRepeatingEvent)
-                .andRoute(POST("/api/todos/{todoId}/repeating-events/generate/{listId}"), repeatingEventHandler::generateTodosForDate);
+                .andRoute(PATCH("/api/todos/{id}/subtask/{index}/toggle"), todoHandler::toggleSubTask);
     }
 }

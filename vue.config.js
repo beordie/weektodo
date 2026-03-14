@@ -8,6 +8,11 @@ module.exports = {
       }
     }
   },
+  configureWebpack: {
+    output: {
+      hashFunction: 'sha256'
+    }
+  },
   pluginOptions: {
     electronBuilder: {
       nodeIntegration: true,

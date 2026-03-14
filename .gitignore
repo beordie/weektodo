@@ -20,3 +20,5 @@ pnpm-debug.log*
 /dist_electron
 
 .env
+
+/logs

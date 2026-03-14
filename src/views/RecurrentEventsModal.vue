@@ -66,10 +66,9 @@
 
 <script>
 import { Toast, Modal } from "bootstrap";
-import repeatingEventHelper from "../helpers/repeatingEvents.js";
-import repeatingEventRepository from "../repositories/repeatingEventRepository";
 import comfirmModal from "../components/comfirmModal.vue";
 import moment from "moment";
+import todoAPI from "../helpers/api/todoAPI";
 
 export default {
   name: "RecurrentEventsModal",
@@ -81,9 +80,42 @@ export default {
       index: 0,
       idToRemove: null,
       repeatingType: "all",
+      backendEvents: [],
     };
   },
   methods: {
+    async fetchRepeatingEventsByType() {
+      try {
+        const typeParam = this.repeatingType === "all" ? null : this.repeatingType;
+        const events = await todoAPI.getAllRepeatingEvents(typeParam);
+        const arr = Array.isArray(events) ? events : [];
+        const mapped = await Promise.all(
+          arr.map(async (e) => {
+            let text = "";
+            if (e.todoId) {
+              try {
+                const todo = await todoAPI.getTodoById(e.todoId);
+                text = todo && todo.text ? todo.text : "";
+              } catch (error) {
+                console.error("fetchRepeatingEventsByType.getTodoById.error", error);
+              }
+            }
+            return {
+              id: e.id,
+              type: String(e.type),
+              start_date: e.startDate,
+              repeating_rule: e.repeatingRule,
+              todoId: e.todoId,
+              data: { text },
+            };
+          })
+        );
+        this.backendEvents = mapped;
+      } catch (err) {
+        console.error("fetchRepeatingEventsByType.error", err);
+        this.backendEvents = [];
+      }
+    },
     frecuency: function (task) {
       switch (task.type) {
         case "0":
@@ -107,14 +139,22 @@ export default {
       let modal = new Modal(document.getElementById("removeReModal"), { backdrop: "static" });
       modal.show();
     },
-    removeRepeatingTaskComfirmed: function () {
-      repeatingEventRepository.remove(this.idToRemove);
-      this.$store.commit("removeRepeatingEvent", this.idToRemove);
-      this.$store.getters.selectedDates.forEach((date) => {
-        repeatingEventHelper.removeGeneratedRepeatingEvents(date, this);
-      });
-      this.$store.commit("resetRepeatingEventDateCache");
-      this.$store.commit("loadRepeatingEventDateCache", this.$store.getters.repeatingEventList);
+    removeRepeatingTaskComfirmed: async function () {
+      try {
+        let target = this.backendEvents.find(e => e.id === this.idToRemove);
+        if (!target) {
+          await this.fetchRepeatingEventsByType();
+          target = this.backendEvents.find(e => e.id === this.idToRemove);
+        }
+        if (!target || !target.todoId) {
+          console.error("未找到待删除的重复事件或缺少 todoId");
+        } else {
+          await todoAPI.deleteRepeatingEvent(target.todoId, this.idToRemove);
+          await this.fetchRepeatingEventsByType();
+        }
+      } catch (err) {
+        console.error("删除重复事件失败:", err);
+      }
       let modal = new Modal(document.getElementById("RecurrentEventsModal"));
       modal.show();
       let toast = new Toast(document.getElementById("recurrentTaskRemoved"));
@@ -127,18 +167,20 @@ export default {
   },
   computed: {
     recurringTasks: function () {
-      let tasks = [];
-      for (const key in this.$store.getters.repeatingEventList) {
-        if (this.repeatingType == "all" || this.repeatingType == this.$store.getters.repeatingEventList[key].type)
-          tasks.push(this.$store.getters.repeatingEventList[key]);
-      }
-      return tasks;
+      return this.backendEvents;
     },
     language: function () {
       return this.$store.getters.config.language;
     },
   },
-  watch: {},
+  mounted() {
+    this.fetchRepeatingEventsByType();
+  },
+  watch: {
+    repeatingType() {
+      this.fetchRepeatingEventsByType();
+    },
+  },
 };
 </script>
 

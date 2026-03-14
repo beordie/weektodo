@@ -5,7 +5,17 @@ import { createProtocol } from "vue-cli-plugin-electron-builder/lib";
 import installExtension, { VUEJS_DEVTOOLS } from "electron-devtools-installer";
 
 const Config = require("electron-config");
-const config = new Config();
+let config;
+try {
+  config = new Config();
+} catch (e) {
+  console.warn("Failed to initialize config, using in-memory config:", e);
+  const inMemoryConfig = {};
+  config = {
+    get: (key, defaultValue) => inMemoryConfig[key] !== undefined ? inMemoryConfig[key] : defaultValue,
+    set: (key, value) => { inMemoryConfig[key] = value; }
+  };
+}
 
 const isDevelopment = process.env.NODE_ENV !== "production";
 const gotTheLock = app.requestSingleInstanceLock();

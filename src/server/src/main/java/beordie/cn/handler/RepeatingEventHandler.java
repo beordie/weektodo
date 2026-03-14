@@ -31,9 +31,18 @@ public class RepeatingEventHandler {
      * 获取所有重复事件
      */
     public Mono<ServerResponse> getAllRepeatingEvents(ServerRequest request) {
+        String typeParam = request.queryParam("type").orElse(null);
+        reactor.core.publisher.Flux<RepeatingEvent> flux = repeatingEventService.getAll();
+        if (typeParam != null && !typeParam.isEmpty()) {
+            try {
+                int type = Integer.parseInt(typeParam);
+                flux = flux.filter(e -> e != null && e.getType() == type);
+            } catch (NumberFormatException ignored) {
+            }
+        }
         return ServerResponse.ok()
                 .contentType(MediaType.APPLICATION_JSON)
-                .body(repeatingEventService.getAll(), RepeatingEvent.class);
+                .body(flux, RepeatingEvent.class);
     }
     
     /**
