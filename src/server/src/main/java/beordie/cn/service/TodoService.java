@@ -145,6 +145,10 @@ public class TodoService {
 
         // 设置更新时间
         todo.setUpdatedAt(java.time.LocalDateTime.now());
+        // 如果重复事件ID为空字符串或仅包含空白，置为null以清空数据库字段
+        if (todo.getRepeatingEventId() != null && todo.getRepeatingEventId().trim().isEmpty()) {
+            todo.setRepeatingEventId(null);
+        }
 
         // 执行所有检查并更新待办事项
         return Mono.zip(taskCheck, milestoneCheck)

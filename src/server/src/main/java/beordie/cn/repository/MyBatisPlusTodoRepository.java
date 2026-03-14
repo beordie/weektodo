@@ -4,6 +4,7 @@ import beordie.cn.mapper.TodoMapper;
 import beordie.cn.model.Todo;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import beordie.cn.model.TodoSortKey;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;
@@ -109,7 +110,13 @@ public class MyBatisPlusTodoRepository implements TodoRepository {
         
         return Mono.fromCallable(() -> {
             todo.setId(id);
-            todoMapper.updateById(todo);
+            if (todo.getRepeatingEventId() == null) {
+                LambdaUpdateWrapper<Todo> uw = new LambdaUpdateWrapper<>();
+                uw.eq(Todo::getId, id).set(Todo::getRepeatingEventId, null);
+                todoMapper.update(todo, uw);
+            } else {
+                todoMapper.updateById(todo);
+            }
             return todo;
         }).subscribeOn(Schedulers.boundedElastic());
     }
