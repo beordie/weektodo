@@ -53,7 +53,7 @@
             <time-picker :time="todo.time" @time-selected="changeTime"></time-picker>
             <i :class="{ 'bi-bell': !todo.alarm, 'bi-bell-fill': todo.alarm }" class="header-menu-icons"
               @click="changeAlarm" :title="$t('todoDetails.alarm')"></i>
-            <repeating-event v-if="showingCalendar" :repeatingEvent="todo.repeatingEvent" :todo="todo"
+            <repeating-event v-if="showingCalendar" :repeatingEvent="todo.repeatingEventId" :todo="todo"
               @repeatingEventSelected="changeRepeatingEvent"></repeating-event>
             <color-picker :color="todo.color" @color-selected="changeColor"></color-picker>
             <i id="btnTaskOptionMenu" class="bi-three-dots-vertical header-menu-icons" type="button"
@@ -79,7 +79,7 @@
                   <i class="bi-trash"></i> <span>{{ $t("ui.remove") }}</span>
                 </button>
               </li>
-              <li v-if="todo.repeatingEvent">
+              <li v-if="todo.repeatingEventId">
                 <button class="dropdown-item" type="button" @click="removeAll" data-bs-dismiss="modal">
                   <i class="bi-trash"></i> <span>{{ $t("ui.removeAll") }}</span>
                 </button>
@@ -156,7 +156,6 @@
 
 <script>
 import Datepicker from "vue3-datepicker";
-import toDoListRepository from "../../repositories/toDoListRepository";
 import moment from "moment";
 import dbRepository from "../../repositories/dbRepository";
 import { Toast, Modal } from "bootstrap";
@@ -164,8 +163,6 @@ import toastMessage from "../../components/toastMessage";
 import colorPicker from "./colorPicker";
 import timePicker from "./timePicker";
 import repeatingEvent from "./repeatingEvent";
-import notifications from "../../helpers/notifications";
-import repeatingEventHelper from "../../helpers/repeatingEvents.js";
 import languageHelper from "../../helpers/languageHelper.js"
 import repeatingEventRepository from "../../repositories/repeatingEventRepository";
 import comfirmModal from "../../components/comfirmModal.vue";
@@ -321,13 +318,13 @@ export default {
     },
     updateTodo: function (resetRepeatinEvent = true) {
       if (resetRepeatinEvent) {
-        this.todo.repeatingEvent = null;
+        this.todo.repeatingEventId = null;
       }
       this.updateTodoList(this.todo.listId, this.todoList);
     },
     updateTodoWithReorder: function (resetRepeatinEvent = true) {
       if (resetRepeatinEvent) {
-        this.todo.repeatingEvent = null;
+        this.todo.repeatingEventId = null;
       }
 
       if (this.$store.getters.config.autoReorderTasks) {
@@ -337,9 +334,7 @@ export default {
       }
     },
     updateTodoList: function (todoListId, TodoList) {
-      notifications.refreshDayNotifications(this, todoListId);
-      toDoListRepository.update(todoListId, TodoList);
-      
+      console.log("updateTodoList.args", { todoListId, TodoList });
       // 更新当前todo到store，触发API调用
       if (this.todo.id) {
         // 使用Todo模型标准化数据结构
@@ -371,7 +366,7 @@ export default {
       this.todoList.splice(this.index, 1);
       this.updateTodoList(oldListId, this.todoList);
       this.todo.listId = newListID;
-      this.todo.repeatingEvent = null;
+      this.todo.repeatingEventId = null;
       if (this.$store.getters.todoLists[newListID]) {
         this.$store.commit("addTodo", this.todo);
         this.todoList = this.$store.getters.todoLists[this.todo.listId];
@@ -422,13 +417,9 @@ export default {
       modal.show();
     },
     removeAllComfirmed() {
-      repeatingEventRepository.remove(this.todo.repeatingEvent);
-      this.$store.commit("removeRepeatingEvent", this.todo.repeatingEvent);
-      this.$store.getters.selectedDates.forEach((date) => {
-        repeatingEventHelper.removeGeneratedRepeatingEvents(date, this);
-      });
-      this.$store.commit("resetRepeatingEventDateCache");
-      this.$store.commit("loadRepeatingEventDateCache", this.$store.getters.repeatingEventList);
+      repeatingEventRepository.remove(this.todo.repeatingEventId);
+      this.$store.commit("removeRepeatingEvent", this.todo.repeatingEventId);
+      // 本地重复实例生成与缓存已移除，后端负责
       let toast = new Toast(document.getElementById("recurrentTaskRemoved"));
       toast.show();
     },
@@ -450,7 +441,7 @@ export default {
         alarm: this.todo.alarm,
         task: this.todo.task,
         milestone: this.todo.milestone,
-        repeatingEvent: null,
+        repeatingEventId: null,
       };
       this.$store.commit("addTodo", newTodo);
 
@@ -528,9 +519,11 @@ export default {
       this.todo.description = description;
       this.updateTodo();
     },
-    changeRepeatingEvent(repeatingEvent) {
-      this.todo.repeatingEvent = repeatingEvent;
-      this.updateTodo(false);
+    changeRepeatingEvent(repeatingEventId) {
+      console.log("changeRepeatingEvent.arg", repeatingEventId);
+      
+      this.todo.repeatingEventId = repeatingEventId;
+      this.updateTodo(repeatingEventId == null);
     },
     toggleSubTaskCheck: function (index) {
       // 切换子任务的checked状态（0表示false，1表示true）
@@ -578,7 +571,7 @@ export default {
       if (this.todo["tags"] == undefined) this.todo["tags"] = [];
       if (this.todo["time"] == undefined) this.todo["time"] = null;
       if (this.todo["alarm"] == undefined) this.todo["alarm"] = 0;
-      if (this.todo["repeatingEvent"] == undefined) this.todo["repeatingEvent"] = null;
+      if (this.todo["repeatingEventId"] == undefined) this.todo["repeatingEventId"] = null;
       this.showingCalendar = moment(this.todo.listId, "YYYYMMDD", true).isValid();
       this.getCListOptions();
       this.loadingView = true;

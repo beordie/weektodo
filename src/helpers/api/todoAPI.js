@@ -117,6 +117,12 @@ export const todoAPI = {
       method: 'PATCH'
     });
   },
+  getAllRepeatingEvents(type) {
+    const q = (type !== undefined && type !== null && type !== 'all')
+      ? `?type=${encodeURIComponent(type)}`
+      : '';
+    return request(`/todos/repeating-events${q}`);
+  },
   createRepeatingEvent(todoId, payload) {
     return request(`/todos/${todoId}/repeating-events`, {
       method: "POST",

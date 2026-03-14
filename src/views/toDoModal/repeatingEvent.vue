@@ -6,6 +6,7 @@
     data-bs-toggle="dropdown"
     data-bs-auto-close="outside"
     :title="$t('ui.recurringTasks')"
+    @click="loadRepeating"
   >
     <i id="btnRepeatingEvent" :class="{ 'bi-arrow-clockwise': !repeatingEvent, 'bi-arrow-repeat': repeatingEvent }"></i>
   </div>
@@ -104,7 +105,6 @@
 
 <script>
 import { RRule, rrulestr } from "rrule";
-import repeatingEventRepository from "../../repositories/repeatingEventRepository";
 import moment from "moment";
 import { Dropdown } from "bootstrap";
 import todoAPI from "../../helpers/api/todoAPI";
@@ -128,10 +128,20 @@ export default {
     todo: { required: true, type: [Object, null] },
   },
   mounted() {
-    if (this.repeatingEvent && this.todo && this.todo.id) {
-      todoAPI.getRepeatingEvent(this.todo.id, this.repeatingEvent).then((re) => {
+  },
+  methods: {
+    async loadRepeating() {
+      console.log("repeatingEvent.loadRepeating", { repeatingEvent: this.repeatingEvent, todoId: this.todo && this.todo.id });
+      if (!(this.repeatingEvent && this.todo && this.todo.id)) {
+        console.warn("repeatingEvent.loadRepeating.skip", { reason: "missing ids", repeatingEvent: this.repeatingEvent, todoId: this.todo && this.todo.id });
+        return;
+      }
+      try {
+        console.log("repeatingEvent.request", { url: `/api/todos/${this.todo.id}/repeating-events/${this.repeatingEvent}` });
+        const re = await todoAPI.getRepeatingEvent(this.todo.id, this.repeatingEvent);
+        console.log("repeatingEvent.response", { id: re && re.id });
         const rule = rrulestr(re.repeatingRule);
-        this.repeatingType = rule.options.freq;
+        this.repeatingType = re.type;
         this.interval = rule.options.interval;
         this.ocurrences = rule.options.count;
         this.ocurrencesType = re.occurrencesType;
@@ -151,38 +161,41 @@ export default {
           this.repeatingType = 6;
           this.daysOfMonth = rule.options.bymonthday.join(",");
         }
-      });
-    }
-  },
-  methods: {
+      } catch (e) {
+        console.error("repeatingEvent.loadRepeating.error", e);
+      }
+    },
     done() {
       const rule = this.repeatingEventRule();
       var repeatingEventId = this.repeatingEvent ? this.repeatingEvent : moment().format("x");
       if (rule) {
-        let date = this.todo.listId;
-        var re_by_date = this.$store.getters.repeatingEventByDate[date];
-        if (!re_by_date) re_by_date = {};
         const re_event = this.generateRepeatingEvent(rule, repeatingEventId);
-        this.$store.dispatch("createRepeatingEvent", { todoId: this.todo.id, re_event, listId: date }).catch(() => {});
+        todoAPI
+          .createRepeatingEvent(this.todo.id, {
+            id: re_event.id,
+            startDate: re_event.start_date,
+            repeatingRule: re_event.repeating_rule,
+            type: parseInt(re_event.type, 10),
+            occurrencesType: re_event.ocurrencesType,
+            endDate: re_event.end_date,
+          })
+          .catch(() => {});
       } else {
-        repeatingEventRepository.remove(repeatingEventId);
         repeatingEventId = null;
       }
 
       let reDropDown = document.getElementById("reDropDown");
       let dropdown = new Dropdown(reDropDown);
       dropdown.hide();
-
       this.$emit("repeatingEventSelected", repeatingEventId);
     },
     split() {
-      repeatingEventRepository.remove(this.repeatingEvent);
       let reDropDown = document.getElementById("reDropDown");
       let dropdown = new Dropdown(reDropDown);
       dropdown.hide();
       this.$emit("repeatingEventSelected", null);
       if (this.todo && this.todo.id && this.repeatingEvent) {
-        this.$store.dispatch("deleteRepeatingEvent", { todoId: this.todo.id, id: this.repeatingEvent, listId: this.todo.listId }).catch(() => {});
+        todoAPI.deleteRepeatingEvent(this.todo.id, this.repeatingEvent).catch(() => {});
       }
     },
     repeatingEventRule() {
@@ -226,7 +239,7 @@ export default {
     },
     generateRepeatingEvent(rule, repeatingEventId) {
       var todo_data = JSON.parse(JSON.stringify(this.todo));
-      todo_data.repeatingEvent = repeatingEventId;
+      todo_data.repeatingEventId = repeatingEventId;
       const rule2 = rrulestr(rule.toString()); //Cloning the rule for some error in the library don't works with original rule
       var re_event = {
         start_date: rule.options.dtstart,
@@ -254,41 +267,6 @@ export default {
     },
   },
   watch: {
-    repeatingEvent: function (newVal) {
-      this.weekdays = { mon: false, tue: false, wed: false, thu: false, fri: false, sat: false, sun: false };
-      if (newVal && this.todo && this.todo.id) {
-        todoAPI.getRepeatingEvent(this.todo.id, newVal).then((re) => {
-          const rule = rrulestr(re.repeatingRule);
-          this.repeatingType = rule.options.freq;
-          this.interval = rule.options.interval;
-          this.ocurrences = rule.options.count;
-          this.ocurrencesType = re.occurrencesType;
-          this.untilDate = rule.options.until ? rule.options.until.toLocaleDateString("en-GB").split("/").reverse().join("-") : null;
-          if (rule.options.byweekday) {
-            rule.options.byweekday.includes(0) && (this.weekdays.mon = true);
-            rule.options.byweekday.includes(1) && (this.weekdays.tue = true);
-            rule.options.byweekday.includes(2) && (this.weekdays.wed = true);
-            rule.options.byweekday.includes(3) && (this.weekdays.thu = true);
-            rule.options.byweekday.includes(4) && (this.weekdays.fri = true);
-            rule.options.byweekday.includes(5) && (this.weekdays.sat = true);
-            rule.options.byweekday.includes(6) && (this.weekdays.sun = true);
-            this.repeatingType = 5;
-          }
-          if (rule.options.bymonthday && rule.options.bymonthday.length > 0) {
-            this.repeatingType = 6;
-            this.daysOfMonth = rule.options.bymonthday.join(",");
-          }
-        });
-      } else {
-        this.repeatingType = "";
-        this.ocurrencesType = "";
-        this.daysOfMonth = "";
-        this.interval = 1;
-        this.untilDate = "";
-        this.ocurrences = null;
-        this.untilDate = null;
-      }
-    },
   },
   computed: {
     language: function () {

@@ -27,6 +27,7 @@ class Todo {
    * @returns {Todo} Todo实例
    */
   static fromJson(json) {
+    
     const todo = new Todo(
       json.id,
       json.text,
@@ -43,7 +44,7 @@ class Todo {
     todo.tags = json.tags;
     todo.time = json.time;
     todo.alarm = json.alarm || 0;
-    todo.repeatingEventId = json.repeatingEventId || json.repeatingEvent;
+    todo.repeatingEventId = json.repeatingEventId;
     todo.milestoneId = json.milestoneId;
     todo.taskId = json.taskId;
     

@@ -48,24 +48,42 @@ const actions = {
     };
   },
   loadAllRepeatingEvent({ commit }) {
-    return new Promise((resolve) => {
-      let db_req = dbRepository.open();
-      db_req.onsuccess = function (event) {
-        let db = event.target.result;
-        let get_req = dbRepository.selectAll(db, "repeating_events");
-        var repeatingEvents = {};
-        get_req.onsuccess = function () {
-          let cursor = get_req.result;
-          if (cursor) {
-            repeatingEvents[cursor.key] = cursor.value;
-            cursor.continue();
-          } else {
-            commit("loadRepeatingEventList", repeatingEvents);
-            resolve();
-          }
-        };
-      };
-    });
+    return todoAPI
+      .getAllRepeatingEvents()
+      .then((events) => {
+        const arr = Array.isArray(events) ? events : [];
+        return Promise.all(
+          arr.map(async (e) => {
+            let text = "";
+            if (e.todoId) {
+              try {
+                const todo = await todoAPI.getTodoById(e.todoId);
+                text = todo && todo.text ? todo.text : "";
+              } catch (error) {
+                console.error("loadAllRepeatingEvent.getTodoById.error", error);
+              }
+            }
+            return {
+              id: e.id,
+              type: String(e.type),
+              start_date: e.startDate,
+              repeating_rule: e.repeatingRule,
+              data: { text },
+            };
+          })
+        );
+      })
+      .then((mappedList) => {
+        const map = {};
+        (mappedList || []).forEach((m) => {
+          if (m && m.id) map[m.id] = m;
+        });
+        commit("loadRepeatingEventList", map);
+      })
+      .catch((err) => {
+        console.error("loadAllRepeatingEvent.backend.error", err);
+        commit("loadRepeatingEventList", {});
+      });
   },
   loadRepeatingEventGeneratedByDate({ commit }, date) {
     return new Promise((resolve) => {
@@ -81,8 +99,8 @@ const actions = {
       };
     });
   },
-  createRepeatingEvent({ dispatch }, { todoId, re_event, listId }) {
-    console.log('dispatch.createRepeatingEvent.input', { todoId, listId, re_event });
+  createRepeatingEvent(_, { todoId, re_event }) {
+    console.log('dispatch.createRepeatingEvent.input', { todoId, re_event });
     const payload = {
       id: re_event.id,
       startDate: re_event.start_date,
@@ -95,19 +113,17 @@ const actions = {
     return todoAPI.createRepeatingEvent(todoId, payload)
       .then((res) => {
         console.log('dispatch.createRepeatingEvent.result', res);
-        if (listId) return dispatch("loadTodoLists", listId);
       })
       .catch((err) => {
         console.error('dispatch.createRepeatingEvent.error', err);
         throw err;
       });
   },
-  deleteRepeatingEvent({ dispatch }, { todoId, id, listId }) {
-    console.log('dispatch.deleteRepeatingEvent.input', { todoId, id, listId });
+  deleteRepeatingEvent(_, { todoId, id }) {
+    console.log('dispatch.deleteRepeatingEvent.input', { todoId, id });
     return todoAPI.deleteRepeatingEvent(todoId, id)
       .then((res) => {
         console.log('dispatch.deleteRepeatingEvent.result', res);
-        if (listId) return dispatch("loadTodoLists", listId);
       })
       .catch((err) => {
         console.error('dispatch.deleteRepeatingEvent.error', err);

@@ -111,7 +111,7 @@ const mutations = {
   moveUndoneItems(state, obj) {
     for (let i = state.todoLists[obj.origenId].length - 1; i >= 0; i--) {
       if (state.todoLists[obj.origenId][i].checked === 0) {
-        state.todoLists[obj.origenId][i].repeatingEvent = null;
+        state.todoLists[obj.origenId][i].repeatingEventId = null;
         state.todoLists[obj.origenId][i].listId = obj.destinyId;
         state.todoLists[obj.destinyId].unshift(state.todoLists[obj.origenId][i]);
         state.todoLists[obj.origenId].splice(i, 1);

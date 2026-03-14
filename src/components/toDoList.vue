@@ -35,7 +35,6 @@ import moment from "moment";
 import toDoListRepository from "../repositories/toDoListRepository";
 import listHeader from "./listHeader";
 import notifications from "../helpers/notifications";
-import repeatingEventHelper from "../helpers/repeatingEvents.js";
 import tasksHelper from "../helpers/tasksHelper";
 
 export default {
@@ -65,7 +64,6 @@ export default {
     this.$store.dispatch("loadTodoLists", listId).then(() => {
       this.$store.dispatch("loadRepeatingEventGeneratedByDate", listId).then(() => {
         this.loading = false;
-        repeatingEventHelper.generateRepeatingEventsIntances(listId, this);
       });
       this.clearRemovedRepeatingEvents();
       this.$emit("todoListMounted", listId);
@@ -92,7 +90,7 @@ export default {
           tags: [],
           time: null,
           alarm: 0,
-          repeatingEvent: null,
+          repeatingEventId: null,
         };
         this.$store.commit("addTodo", newTodo);
         this.updateTodoList(this.id, this.$store.getters.todoLists[this.id]);
@@ -113,7 +111,7 @@ export default {
         todoId: toDo.id,
       });
       this.updateTodoList(toDo.listId, this.$store.getters.todoLists[toDo.listId]);
-      if (toDo.listId != list) toDo.repeatingEvent = null;
+      if (toDo.listId != list) toDo.repeatingEventId = null;
       toDo.listId = list;
       this.$store.commit("insertTodo", {
         toDoListId: list,
@@ -130,7 +128,7 @@ export default {
       let toDo = JSON.parse(event.dataTransfer.getData("item"));
       this.$store.commit("removeTodo", { toDoListId: toDo.listId, todoId: toDo.id });
       this.updateTodoList(toDo.listId, this.$store.getters.todoLists[toDo.listId]);
-      if (toDo.listId != list) toDo.repeatingEvent = null;
+      if (toDo.listId != list) toDo.repeatingEventId = null;
       toDo.listId = list;
       this.$store.commit("addTodo", toDo);
 
@@ -160,7 +158,6 @@ export default {
     },
     clearRemovedRepeatingEvents: function () {
       if (this.customTodoList) return;
-      repeatingEventHelper.removeGeneratedRepeatingEvents(this.id, this);
     },
   },
   watch: {

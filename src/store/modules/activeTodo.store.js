@@ -11,7 +11,7 @@ const state = {
       tags: [],
       time: null,
       alarm: 0,
-      repeatingEvent: null,
+      repeatingEventId: null,
     },
   },
 };
