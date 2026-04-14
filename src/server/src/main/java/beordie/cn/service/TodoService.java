@@ -2,27 +2,37 @@ package beordie.cn.service;
 
 import beordie.cn.model.Todo;
 import beordie.cn.model.TodoSortKey;
+import beordie.cn.notification.model.NotificationType;
 import beordie.cn.repository.TodoRepository;
+import beordie.cn.schedule.model.ScheduledTask;
+import beordie.cn.schedule.service.ScheduledTaskService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 @Service
 public class TodoService {
+    private static final Logger log = LoggerFactory.getLogger(TodoService.class);
+    
     private final TodoRepository todoRepository;
     private final TaskService taskService;
     private final MilestoneService milestoneService;
     private final TimeCacheService timeCacheService;
     private final RepeatingEventService repeatingEventService;
+    private final ScheduledTaskService scheduledTaskService;
 
     @Autowired
-    public TodoService(TodoRepository todoRepository, TaskService taskService, MilestoneService milestoneService, TimeCacheService timeCacheService, RepeatingEventService repeatingEventService) {
+    public TodoService(TodoRepository todoRepository, TaskService taskService, MilestoneService milestoneService, TimeCacheService timeCacheService, RepeatingEventService repeatingEventService, @Lazy ScheduledTaskService scheduledTaskService) {
         this.todoRepository = todoRepository;
         this.taskService = taskService;
         this.milestoneService = milestoneService;
         this.timeCacheService = timeCacheService;
         this.repeatingEventService = repeatingEventService;
+        this.scheduledTaskService = scheduledTaskService;
     }
 
     // 辅助方法：根据taskId查询task title和color并赋值给Todo的task和color字段
@@ -45,9 +55,13 @@ public class TodoService {
                 .flatMap(this::setTaskTitleForTodo);
     }
 
+     public Flux<Todo> getTodosByListIdDirectly(String listId) {
+        return todoRepository.findByListId(listId);
+     }
+
     // 根据列表ID获取待办事项
     public Flux<Todo> getTodosByListId(String listId) {
-        return todoRepository.findByListId(listId)
+        return this.getTodosByListIdDirectly(listId)
                 .flatMap(this::setTaskTitleForTodo)
                 .filterWhen(todo -> {
                     if (todo.getRepeatingEventId() == null || todo.getRepeatingEventId().isBlank()) {
@@ -119,8 +133,9 @@ public class TodoService {
         return Mono.zip(taskCheck, milestoneCheck)
                 .flatMap(tuple -> todoRepository.save(todo))
                 .flatMap(savedTodo -> {
-                    // 在创建后处理todo状态变化
+                    // 在创建后处理todo状态变化和alarm
                     return timeCacheService.handleTodoStatusChange(savedTodo)
+                            .doOnSuccess(v -> handleTodoAlarm(savedTodo))
                             .thenReturn(savedTodo);
                 });
     }
@@ -164,8 +179,9 @@ public class TodoService {
         return Mono.zip(taskCheck, milestoneCheck)
                 .flatMap(tuple -> todoRepository.update(id, todo))
                 .flatMap(updatedTodo -> {
-                    // 在更新后处理todo状态变化
+                    // 在更新后处理todo状态变化和alarm
                     return timeCacheService.handleTodoStatusChange(updatedTodo)
+                            .doOnSuccess(v -> handleTodoAlarm(updatedTodo))
                             .thenReturn(updatedTodo);
                 })
                 .flatMap(this::setTaskTitleForTodo); // 设置task字段
@@ -178,6 +194,9 @@ public class TodoService {
                     Mono<Void> deleteRepeat = Mono.empty();
                     if (todo.getRepeatingEventId() != null && !todo.getRepeatingEventId().isEmpty()) {
                         deleteRepeat = repeatingEventService.deleteById(todo.getRepeatingEventId());
+                    }
+                    if (todo.getAlarm() == 1) {
+                        scheduledTaskService.cancelTaskByTodoId(id);
                     }
                     return deleteRepeat.then(todoRepository.deleteById(id));
                 })
@@ -233,5 +252,68 @@ public class TodoService {
     public Flux<Todo> getAllTodos() {
         return todoRepository.findAll()
                 .flatMap(this::setTaskTitleForTodo);
+    }
+    
+    private void handleTodoAlarm(Todo todo) {
+        if (todo.getId() == null) {
+            return;
+        }
+        
+        log.info("Handling todo alarm: todoId={}, alarm={}", todo.getId(), todo.getAlarm());
+        
+        scheduledTaskService.cancelTaskByTodoId(todo.getId());
+        
+        if (todo.getAlarm() == 1) {
+            createAlarmTask(todo);
+        }
+    }
+    
+    private void createAlarmTask(Todo todo) {
+        if (todo.getTime() == null) {
+            log.warn("Todo has no time, cannot create alarm task: todoId={}", todo.getId());
+            return;
+        }
+        
+        java.time.LocalDateTime executeTime = todo.getStartTime();
+        if (executeTime == null) {
+            executeTime = todo.getEndTime();
+        }
+        
+        if (executeTime == null) {
+            log.warn("Todo has no valid start/end time, cannot create alarm task: todoId={}", todo.getId());
+            return;
+        }
+        
+        if (executeTime.isBefore(java.time.LocalDateTime.now())) {
+            log.warn("Todo time is in past, skipping alarm task: todoId={}, time={}", todo.getId(), executeTime);
+            return;
+        }
+        
+        ScheduledTask task = new ScheduledTask();
+        task.setTodoId(todo.getId());
+        task.setName("Todo Alarm: " + todo.getText());
+        task.setDescription("Alarm for todo: " + todo.getId());
+        task.setExecuteTime(executeTime);
+        task.setNotificationType(NotificationType.FEISHU);
+        task.setNotificationTitle("待办事项提醒");
+        task.setNotificationContent("您有待办事项需要处理：" + todo.getText());
+        
+        if (todo.getTime() != null) {
+            if (todo.getTime().getStart() != null) {
+                java.time.LocalDateTime startTime = todo.getStartTime();
+                if (startTime != null) {
+                    task.setNotificationStartTime(startTime.format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")));
+                }
+            }
+            if (todo.getTime().getEnd() != null) {
+                java.time.LocalDateTime endTime = todo.getEndTime();
+                if (endTime != null) {
+                    task.setNotificationEndTime(endTime.format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")));
+                }
+            }
+        }
+        
+        log.info("Creating alarm task for todo: todoId={}, executeTime={}", todo.getId(), executeTime);
+        scheduledTaskService.createTask(task);
     }
 }

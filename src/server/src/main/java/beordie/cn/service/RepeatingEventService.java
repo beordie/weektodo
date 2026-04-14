@@ -3,9 +3,10 @@ package beordie.cn.service;
 import beordie.cn.model.RepeatingEvent;
 import beordie.cn.model.Todo;
 import beordie.cn.repository.RepeatingEventRepository;
-import beordie.cn.repository.TodoRepository;
+import beordie.cn.service.TodoService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -31,11 +32,11 @@ public class RepeatingEventService {
     
     private static final Logger log = LoggerFactory.getLogger(RepeatingEventService.class);
     private final RepeatingEventRepository repeatingEventRepository;
-    private final TodoRepository todoRepository;
+    private final TodoService todoService;
     
-    public RepeatingEventService(RepeatingEventRepository repeatingEventRepository, TodoRepository todoRepository) {
+    public RepeatingEventService(RepeatingEventRepository repeatingEventRepository, @Lazy TodoService todoService) {
         this.repeatingEventRepository = repeatingEventRepository;
-        this.todoRepository = todoRepository;
+        this.todoService = todoService;
     }
     
     /**
@@ -88,11 +89,11 @@ public class RepeatingEventService {
             LocalDate targetDate = LocalDate.parse(listId, DateTimeFormatter.BASIC_ISO_DATE);
             log.info("RepeatingEventService: targetDate {}", targetDate);
             
-            List<Todo> existingTodos = Objects.requireNonNull(todoRepository.findByListId(listId)
+            List<Todo> existingTodos = Objects.requireNonNull(todoService.getTodosByListIdDirectly(listId)
                             .collectList()
                             .block())
-                    .stream()
-                    .toList();
+                            .stream()
+                            .toList();
             log.info("RepeatingEventService: existingTodos: {}", existingTodos.size());
 
             List<RepeatingEvent> allEvents = Objects.requireNonNull(repeatingEventRepository.findAll().collectList().block());
@@ -119,7 +120,7 @@ public class RepeatingEventService {
             // 3) 将剩余的预创建 Todo 插入数据库
             log.info("RepeatingEventService: Saving {} todos to DB", needCreate.size());
             needCreate.forEach(todo -> {
-                todoRepository.save(todo).block();
+                todoService.createTodo(todo).block();
             });
             
             log.info("RepeatingEventService.generateTodosForDate: Done, generated {} todos", needCreate.size());
@@ -130,7 +131,7 @@ public class RepeatingEventService {
     private Todo buildTodoFromEvent(RepeatingEvent repeatingEvent, String listId) {
         Todo origin = null;
         if (repeatingEvent.getTodoId() != null && !repeatingEvent.getTodoId().isEmpty()) {
-            origin = this.todoRepository.findById(repeatingEvent.getTodoId()).block();
+            origin = this.todoService.getTodoById(repeatingEvent.getTodoId()).block();
         }
         if (origin == null) {
             return null;
