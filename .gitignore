@@ -22,3 +22,6 @@ pnpm-debug.log*
 .env
 
 /logs
+
+# 配置文件（包含敏感信息）
+src/server/src/main/resources/application.yml

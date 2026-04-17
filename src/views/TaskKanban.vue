@@ -194,10 +194,29 @@
         </div>
         <div class="trend-chart-container">
           <svg class="trend-chart" viewBox="0 0 800 300">
+            <defs>
+              <linearGradient id="trendGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" style="stop-color:#10b981;stop-opacity:0.2" />
+                <stop offset="100%" style="stop-color:#10b981;stop-opacity:0" />
+              </linearGradient>
+            </defs>
+            
+            <!-- 网格线 -->
+            <line x1="50" y1="100" x2="750" y2="100" stroke="#f1f5f9" stroke-width="1" stroke-dasharray="4,4"/>
+            <line x1="50" y1="150" x2="750" y2="150" stroke="#f1f5f9" stroke-width="1" stroke-dasharray="4,4"/>
+            <line x1="50" y1="200" x2="750" y2="200" stroke="#f1f5f9" stroke-width="1" stroke-dasharray="4,4"/>
+            
             <!-- X轴 -->
-            <line x1="50" y1="250" x2="750" y2="250" stroke="#e9ecef" stroke-width="2"/>
+            <line x1="50" y1="250" x2="750" y2="250" stroke="#e5e7eb" stroke-width="1.5"/>
             <!-- Y轴 -->
-            <line x1="50" y1="50" x2="50" y2="250" stroke="#e9ecef" stroke-width="2"/>
+            <line x1="50" y1="50" x2="50" y2="250" stroke="#e5e7eb" stroke-width="1.5"/>
+            
+            <!-- 填充区域 -->
+            <polygon 
+              v-if="trendPoints"
+              :points="getAreaPoints(trendPoints)"
+              fill="url(#trendGradient)"
+            />
             
             <!-- X轴标签 - 由后端提供 -->
             <text v-for="item in trendXAxisLabels" :key="'tx-' + item.index"
@@ -212,8 +231,10 @@
             <polyline 
               :points="trendPoints" 
               fill="none" 
-              stroke="#007bff" 
+              stroke="#10b981" 
               stroke-width="3" 
+              stroke-linecap="round"
+              stroke-linejoin="round"
             />
             
             <!-- 动态数据点 -->
@@ -221,17 +242,31 @@
               <circle 
                 :cx="point.x" 
                 :cy="point.y" 
-                r="6" 
-                fill="#007bff"
-              />
+                r="4" 
+                fill="white"
+                stroke="#10b981"
+                stroke-width="2"
+                class="chart-point"
+                :style="{ animationDelay: `${index * 0.1}s` }"
+              >
+                <animate 
+                  attributeName="r" 
+                  values="4;7;4" 
+                  dur="0.8s" 
+                  :begin="`${index * 0.1}s`"
+                  fill="freeze"
+                />
+              </circle>
             </template>
             <!-- 数据值标签 -->
             <template v-for="(p, i) in trendLabeledPoints" :key="'tl-' + i">
               <text 
                 :x="p.x" 
-                :y="p.y - 10" 
+                :y="p.y - 14" 
                 text-anchor="middle" 
-                class="data-label">
+                class="data-label"
+                :style="{ animationDelay: `${i * 0.1 + 0.4}s` }"
+              >
                 {{ p.value }}
               </text>
             </template>
@@ -251,10 +286,29 @@
         </div>
         <div class="trend-chart-container">
           <svg class="trend-chart" viewBox="0 0 800 300">
+            <defs>
+              <linearGradient id="timeGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" style="stop-color:#3b82f6;stop-opacity:0.2" />
+                <stop offset="100%" style="stop-color:#3b82f6;stop-opacity:0" />
+              </linearGradient>
+            </defs>
+            
+            <!-- 网格线 -->
+            <line x1="50" y1="100" x2="750" y2="100" stroke="#f1f5f9" stroke-width="1" stroke-dasharray="4,4"/>
+            <line x1="50" y1="150" x2="750" y2="150" stroke="#f1f5f9" stroke-width="1" stroke-dasharray="4,4"/>
+            <line x1="50" y1="200" x2="750" y2="200" stroke="#f1f5f9" stroke-width="1" stroke-dasharray="4,4"/>
+            
             <!-- X轴 -->
-            <line x1="50" y1="250" x2="750" y2="250" stroke="#e9ecef" stroke-width="2"/>
+            <line x1="50" y1="250" x2="750" y2="250" stroke="#e5e7eb" stroke-width="1.5"/>
             <!-- Y轴 -->
-            <line x1="50" y1="50" x2="50" y2="250" stroke="#e9ecef" stroke-width="2"/>
+            <line x1="50" y1="50" x2="50" y2="250" stroke="#e5e7eb" stroke-width="1.5"/>
+            
+            <!-- 填充区域 -->
+            <polygon 
+              v-if="timeStatsPoints"
+              :points="getAreaPoints(timeStatsPoints)"
+              fill="url(#timeGradient)"
+            />
             
             <!-- X轴标签 -->
             <text v-for="item in timeXAxisLabels" :key="'tsx-' + item.index"
@@ -265,17 +319,14 @@
               {{ item.text }}
             </text>
             
-            <!-- Y轴标签 -->
-            <text x="30" y="250" text-anchor="middle" class="axis-label">0h</text>
-            <text x="30" y="175" text-anchor="middle" class="axis-label">{{ Math.floor(maxTimeStatsValue / 2) }}h</text>
-            <text x="30" y="100" text-anchor="middle" class="axis-label">{{ maxTimeStatsValue }}h</text>
-            
             <!-- 动态折线 -->
             <polyline 
               :points="timeStatsPoints" 
               fill="none" 
-              stroke="#28a745" 
+              stroke="#3b82f6" 
               stroke-width="3" 
+              stroke-linecap="round"
+              stroke-linejoin="round"
             />
             
             <!-- 动态数据点 -->
@@ -283,17 +334,31 @@
               <circle 
                 :cx="point.x" 
                 :cy="point.y" 
-                r="6" 
-                fill="#28a745"
-              />
+                r="4" 
+                fill="white"
+                stroke="#3b82f6"
+                stroke-width="2"
+                class="chart-point"
+                :style="{ animationDelay: `${index * 0.1}s` }"
+              >
+                <animate 
+                  attributeName="r" 
+                  values="4;7;4" 
+                  dur="0.8s" 
+                  :begin="`${index * 0.1}s`"
+                  fill="freeze"
+                />
+              </circle>
             </template>
             <!-- 数据值标签 -->
             <template v-for="(p, i) in timeLabeledPoints" :key="'tsl-' + i">
               <text 
                 :x="p.x" 
-                :y="p.y - 10" 
+                :y="p.y - 14" 
                 text-anchor="middle" 
-                class="data-label">
+                class="data-label"
+                :style="{ animationDelay: `${i * 0.1 + 0.4}s` }"
+              >
                 {{ p.value }}h
               </text>
             </template>
@@ -547,7 +612,265 @@
 .stats-charts-container {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 24px;
+}
+
+/* 统计图表项 - 与热力图风格一致 */
+.stats-chart-item {
+  background: rgba(255, 255, 255, 0.98);
+  padding: 24px;
+  border-radius: 12px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  position: relative;
+  overflow: hidden;
+}
+
+.stats-chart-item::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, #34d399 0%, #10b981 50%, #059669 100%);
+}
+
+/* 图表区域头部 */
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.section-header h3 {
+  font-size: 18px;
+  font-weight: 600;
+  color: #1f2328;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.section-header h3::before {
+  content: '';
+  width: 4px;
+  height: 18px;
+  background: linear-gradient(180deg, #34d399 0%, #10b981 100%);
+  border-radius: 2px;
+}
+
+/* 选择器样式 */
+.trend-select-with-icon {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.trend-icon {
+  font-size: 14px;
+  color: #57606a;
+}
+
+.trend-select {
+  padding: 8px 16px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+  background: #f6f8fa;
+  color: #1f2328;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  outline: none;
+}
+
+.trend-select:hover {
+  border-color: #10b981;
+  background: #dcfce7;
+}
+
+.trend-select:focus {
+  border-color: #10b981;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15);
+}
+
+/* 图表容器 */
+.trend-chart-container {
+  position: relative;
+  min-height: 320px;
+  margin-top: 15px;
+  background: linear-gradient(180deg, rgba(52, 211, 153, 0.03) 0%, transparent 100%);
+  border-radius: 8px;
+  padding: 10px;
+}
+
+.trend-chart {
+  width: 100%;
+  max-width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+.trend-chart polyline {
+  animation: lineDrawIn 1s ease-out forwards;
+  stroke-dasharray: 2000;
+  stroke-dashoffset: 2000;
+}
+
+.trend-chart circle {
+  animation: pointPopIn 0.5s ease-out forwards;
+  transform-origin: center;
+  opacity: 0;
+}
+
+.trend-chart .chart-point {
+  animation: pointPopIn 0.5s ease-out forwards;
+  transform-origin: center;
+  opacity: 0;
+  transition: all 0.2s ease;
+}
+
+.trend-chart .chart-point:hover {
+  cursor: pointer;
+  filter: drop-shadow(0 0 12px rgba(0,0,0,0.3));
+}
+
+.trend-chart .chart-point:hover + .data-label,
+.trend-chart .chart-point:hover ~ .data-label {
+  font-weight: 700;
+  transform: scale(1.1);
+}
+
+.trend-chart circle:nth-child(1) { animation-delay: 0.1s; }
+.trend-chart circle:nth-child(2) { animation-delay: 0.2s; }
+.trend-chart circle:nth-child(3) { animation-delay: 0.3s; }
+.trend-chart circle:nth-child(4) { animation-delay: 0.4s; }
+.trend-chart circle:nth-child(5) { animation-delay: 0.5s; }
+.trend-chart circle:nth-child(6) { animation-delay: 0.6s; }
+.trend-chart circle:nth-child(7) { animation-delay: 0.7s; }
+.trend-chart circle:nth-child(8) { animation-delay: 0.8s; }
+
+.trend-chart polygon {
+  animation: areaFadeIn 1s ease-out forwards;
+  animation-delay: 0.3s;
+  opacity: 0;
+  transform-origin: bottom;
+}
+
+.trend-chart .data-label {
+  animation: labelFadeIn 0.5s ease-out forwards;
+  animation-delay: 0.5s;
+  opacity: 0;
+  transform-origin: center;
+  transition: all 0.2s ease;
+}
+
+@keyframes lineDrawIn {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes pointPopIn {
+  0% {
+    opacity: 0;
+    transform: scale(0);
+  }
+  50% {
+    transform: scale(1.5);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes areaFadeIn {
+  0% {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes labelFadeIn {
+  0% {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* 坐标轴和标签样式 */
+.axis-label {
+  font-size: 12px;
+  fill: #57606a;
+  font-weight: 500;
+}
+
+.data-label {
+  font-size: 11px;
+  fill: #1f2328;
+  font-weight: 600;
+}
+
+/* 统计图表项暗黑主题适配 */
+.dark-theme .stats-chart-item {
+  background: rgba(22, 27, 34, 0.98);
+  border: 1px solid rgba(48, 54, 61, 0.8);
+}
+
+.dark-theme .stats-chart-item::before {
+  background: linear-gradient(90deg, #3fb950 0%, #2ea043 50%, #238636 100%);
+}
+
+.dark-theme .section-header h3 {
+  color: #e6edf3;
+}
+
+.dark-theme .section-header h3::before {
+  background: linear-gradient(180deg, #3fb950 0%, #2ea043 100%);
+}
+
+.dark-theme .trend-icon {
+  color: #8b949e;
+}
+
+.dark-theme .trend-select {
+  border-color: rgba(48, 54, 61, 0.8);
+  background: #21262d;
+  color: #e6edf3;
+}
+
+.dark-theme .trend-select:hover {
+  border-color: #3fb950;
+  background: rgba(63, 185, 80, 0.15);
+}
+
+.dark-theme .trend-select:focus {
+  border-color: #3fb950;
+  box-shadow: 0 0 0 3px rgba(63, 185, 80, 0.25);
+}
+
+.dark-theme .trend-chart-container {
+  background: linear-gradient(180deg, rgba(63, 185, 80, 0.05) 0%, transparent 100%);
+}
+
+.dark-theme .axis-label {
+  fill: #8b949e;
+}
+
+.dark-theme .data-label {
+  fill: #e6edf3;
 }
 
 /* 任务项扩展样式 */
@@ -581,18 +904,30 @@
 
 /* GitHub风格提交图样式 */
 .commit-graph-container {
-  padding: 20px;
-  background: rgba(255, 255, 255, 0.95);
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  margin-bottom: 20px;
+  padding: 24px;
+  background: rgba(255, 255, 255, 0.98);
+  border-radius: 12px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+  margin-bottom: 24px;
+  border: 1px solid rgba(0, 0, 0, 0.05);
 }
 
 .commit-graph-title {
   font-size: 18px;
   font-weight: 600;
-  margin-bottom: 15px;
-  color: #333;
+  margin-bottom: 20px;
+  color: #1f2328;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.commit-graph-title::before {
+  content: '';
+  width: 4px;
+  height: 18px;
+  background: linear-gradient(180deg, #34d399 0%, #10b981 100%);
+  border-radius: 2px;
 }
 
 .commit-graph {
@@ -604,90 +939,128 @@
 .commit-content-wrapper {
   display: flex;
   align-items: flex-start;
-  width: 100%; /* 确保宽度为100% */
-  min-width: min-content; /* 确保最小宽度能容纳所有内容 */
+  width: 100%;
+  min-width: min-content;
 }
 
-/* 星期标签 - 垂直排列在左侧 */
+/* 星期标签 - 垂直排列在左侧，与热力图行完美对齐 */
 .commit-week-labels {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  margin-right: 8px;
+  gap: 5px;
+  margin-right: 12px;
+  padding-top: 2px;
+  height: fit-content;
 }
 
 .commit-week-label {
   font-size: 11px;
-  color: #6a737d;
+  color: #57606a;
   text-align: right;
-  padding-right: 5px;
-  line-height: 12px;
-  height: 12px;
+  padding-right: 6px;
+  line-height: 16px;
+  height: 16px;
+  min-height: 16px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
 }
 
 /* 网格内容区域 - 包含任务格子和月份标签 */
 .commit-grid-content {
   display: flex;
   flex-direction: column;
-  flex: 1; /* 添加flex: 1，让它在flex容器中占据剩余空间 */
+  flex: 1;
 }
 
 /* 主要网格内容 - 52周 x 7天 */
 .commit-cells {
   display: grid;
   grid-template-columns: repeat(52, 1fr);
-  grid-template-rows: repeat(7, 1fr);
-  gap: 3px;
+  grid-template-rows: repeat(7, 16px);
+  gap: 5px;
   width: 100%;
-  height: auto; /* 修改为auto，让高度根据内容自适应 */
-  overflow-x: visible; /* 使用visible避免出现滚动条 */
+  height: auto;
+  overflow-x: visible;
 }
 
 .commit-cell {
-  min-width: 12px;
-  min-height: 12px;
-  max-width: 45px;
-  max-height: 45px;
-  border-radius: 2px;
-  background-color: #ebedf0;
+  min-width: 16px;
+  min-height: 16px;
+  max-width: 50px;
+  max-height: 50px;
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  background-color: #f6f8fa;
   position: relative;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  aspect-ratio: 1;
 }
 
-/* 不同提交级别的颜色 */
-.commit-level-0 { background-color: #ebedf0; }
-.commit-level-1 { background-color: #c6e48b; }
-.commit-level-2 { background-color: #7bc96f; }
-.commit-level-3 { background-color: #239a3b; }
-.commit-level-4 { background-color: #196127; }
+/* 不同提交级别的颜色 - 更柔和的渐变色 */
+.commit-level-0 { 
+  background-color: #f6f8fa; 
+}
+.commit-level-1 { 
+  background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);
+}
+.commit-level-2 { 
+  background: linear-gradient(135deg, #86efac 0%, #4ade80 100%);
+}
+.commit-level-3 { 
+  background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+}
+.commit-level-4 { 
+  background: linear-gradient(135deg, #15803d 0%, #166534 100%);
+}
+.commit-level-5 { 
+  background: linear-gradient(135deg, #fecaca 0%, #fca5a5 100%);
+}
 
-/* 悬停效果 - 使用内阴影代替边框，避免影响布局 */
+/* 悬停效果 - 更流畅的动画 */
 .commit-cell:hover {
-  filter: brightness(0.9);
-  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.3);
+  transform: scale(1.2);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
   z-index: 10;
-  transition: all 0.2s ease;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Tooltip样式 */
+/* Tooltip样式 - 更美观 */
 .commit-cell:hover::after {
   content: attr(data-tooltip);
   position: absolute;
-  bottom: 15px;
+  bottom: 100%;
   left: 50%;
-  transform: translateX(-50%);
-  background: #333;
+  transform: translateX(-50%) translateY(-8px);
+  background: #1f2328;
   color: white;
-  padding: 6px 10px;
-  border-radius: 4px;
+  padding: 8px 12px;
+  border-radius: 8px;
   font-size: 12px;
   white-space: pre;
   max-width: none;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-  z-index: 100;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+  z-index: 1000;
   pointer-events: none;
   overflow: visible;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+/* Tooltip箭头 */
+.commit-cell:hover::before {
+  content: '';
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 6px solid transparent;
+  border-top-color: #1f2328;
+  z-index: 1000;
+  margin-bottom: -4px;
 }
 
 /* 月份标签 - 水平分布在网格下方 */
@@ -695,45 +1068,118 @@
   display: grid;
   grid-template-columns: repeat(52, 1fr);
   gap: 0;
-  margin-top: 5px;
+  margin-top: 8px;
 }
 
 .commit-month-label {
-  font-size: 10px;
-  color: #6a737d;
+  font-size: 11px;
+  color: #57606a;
   text-align: left;
-  font-weight: 500;
-  grid-column: span 4; /* 每个月份标签跨4列 */
+  font-weight: 600;
+  grid-column: span 4;
   margin-left: 0;
-  transform: translateX(-50%); /* 将标签向左移动50%以更好地居中于月份起始位置 */
+  transform: translateX(-25%);
+  padding-top: 2px;
 }
 
-/* 图例 */
+/* 图例 - 更美观的样式 */
 .commit-legend {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 5px;
-  margin-top: 15px;
+  gap: 8px;
+  margin-top: 20px;
   font-size: 12px;
-  color: #6a737d;
+  color: #57606a;
+  padding: 12px 16px;
+  background: #f6f8fa;
+  border-radius: 8px;
+  width: fit-content;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .commit-legend-cell {
-  width: 12px;
-  height: 12px;
-  border-radius: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 4px;
+  transition: transform 0.2s ease;
+}
+
+.commit-legend-cell:hover {
+  transform: scale(1.15);
 }
 
 .commit-legend-text {
-  margin: 0 5px;
+  margin: 0 6px;
+  font-weight: 500;
+}
+
+/* 暗黑主题适配 */
+.dark-theme .commit-graph-container {
+  background: rgba(22, 27, 34, 0.98);
+  border: 1px solid rgba(48, 54, 61, 0.8);
+}
+
+.dark-theme .commit-graph-title {
+  color: #e6edf3;
+}
+
+.dark-theme .commit-week-label {
+  color: #8b949e;
+}
+
+.dark-theme .commit-cell {
+  background-color: #161b22;
+}
+
+.dark-theme .commit-level-0 { 
+  background-color: #161b22; 
+}
+.dark-theme .commit-level-1 { 
+  background: linear-gradient(135deg, #0e4429 0%, #006d32 100%);
+}
+.dark-theme .commit-level-2 { 
+  background: linear-gradient(135deg, #006d32 0%, #26a641 100%);
+}
+.dark-theme .commit-level-3 { 
+  background: linear-gradient(135deg, #26a641 0%, #39d353 100%);
+}
+.dark-theme .commit-level-4 { 
+  background: linear-gradient(135deg, #39d353 0%, #56d364 100%);
+}
+.dark-theme .commit-level-5 { 
+  background: linear-gradient(135deg, #6e1a1a 0%, #8b1f1f 100%);
+}
+
+.dark-theme .commit-month-label {
+  color: #8b949e;
+}
+
+.dark-theme .commit-legend {
+  background: #21262d;
+  color: #8b949e;
+}
+
+.dark-theme .commit-cell:hover::after {
+  background: #e6edf3;
+  color: #1f2328;
+}
+
+.dark-theme .commit-cell:hover::before {
+  border-top-color: #e6edf3;
 }
 
 /* 响应式设计 */
 @media (max-width: 768px) {
+  .commit-graph-container {
+    padding: 16px;
+  }
+  
   .commit-cells {
     grid-template-columns: repeat(26, 1fr);
-    gap: 2px;
+    grid-template-rows: repeat(7, 12px);
+    gap: 4px;
   }
   
   .commit-month-labels {
@@ -741,20 +1187,37 @@
   }
   
   .commit-cell {
-    width: 8px;
-    height: 8px;
+    min-width: 12px;
+    min-height: 12px;
+    width: 12px;
+    height: 12px;
+  }
+  
+  .commit-week-labels {
+    gap: 4px;
   }
   
   .commit-week-label {
     font-size: 10px;
-    line-height: 8px;
-    height: 8px;
+    line-height: 12px;
+    height: 12px;
+    min-height: 12px;
   }
   
   .commit-month-label {
-    font-size: 9px;
+    font-size: 10px;
     grid-column: span 2;
-    margin-left: -5px;
+    margin-left: -3px;
+  }
+  
+  .commit-legend {
+    padding: 10px 12px;
+    font-size: 11px;
+  }
+  
+  .commit-legend-cell {
+    width: 12px;
+    height: 12px;
   }
 }
 
@@ -1182,11 +1645,19 @@ export default {
       timeStatsPoints() {
         const data = this.timeStatsData;
         const maxValue = Math.max(...data, 1);
-        const pointCount = Math.max(data.length, 1);
-        const startX = 60;
-        const endX = 740;
-        const step = pointCount > 1 ? (endX - startX) / (pointCount - 1) : 0;
-        const getXCoordinate = (index) => startX + index * step;
+        const pointCount = data.length;
+        
+        // 根据数据点数量计算合适的间距（与trendPoints保持一致）
+        const getXCoordinate = (index) => {
+          // 对于不同数量的数据点，使用不同的起始位置和间距
+          if (pointCount === 4) { // 季度趋势
+            // 4个数据点时，从200开始，间距150
+            return 200 + index * 150;
+          } else { // 7个数据点（日、周、月趋势）
+            // 7个数据点时，从100开始，间距100
+            return 100 + index * 100;
+          }
+        };
         
         return data.map((value, index) => {
           const x = getXCoordinate(index);
@@ -1200,11 +1671,16 @@ export default {
       timeStatsChartDataPoints() {
         const data = this.timeStatsData;
         const maxValue = Math.max(...data, 1);
-        const pointCount = Math.max(data.length, 1);
-        const startX = 60;
-        const endX = 740;
-        const step = pointCount > 1 ? (endX - startX) / (pointCount - 1) : 0;
-        const getXCoordinate = (index) => startX + index * step;
+        const pointCount = data.length;
+        
+        // 根据数据点数量计算合适的间距（与trendChartDataPoints保持一致）
+        const getXCoordinate = (index) => {
+          if (pointCount === 4) { // 季度趋势
+            return 200 + index * 150;
+          } else { // 7个数据点
+            return 100 + index * 100;
+          }
+        };
         
         return data.map((value, index) => {
           const x = getXCoordinate(index);
@@ -1694,6 +2170,25 @@ export default {
       return monthLabels;
     },
     
+    // 计算填充区域的点
+    getAreaPoints(points) {
+      if (!points || points.trim() === '') return '';
+      
+      const pointsArray = points.split(' ');
+      if (pointsArray.length < 2) return '';
+      
+      // 获取第一个点的 x 坐标和最后一个点的 x 坐标
+      const firstPoint = pointsArray[0].split(',');
+      const lastPoint = pointsArray[pointsArray.length - 1].split(',');
+      
+      // 构建填充区域的点：原始点 + 右下角 + 左下角
+      let areaPoints = points;
+      areaPoints += ` ${lastPoint[0]},250`;
+      areaPoints += ` ${firstPoint[0]},250`;
+      
+      return areaPoints;
+    },
+    
     // 获取提交提示信息
     getCommitTooltip(date, count) {
       // 添加日期和任务数量
@@ -1971,188 +2466,6 @@ export default {
     font-size: 14px;
     font-weight: 400;
   }
-
-/* 统计卡片区域样式 */
-.statistics-section {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 20px;
-  margin-bottom: 30px;
-}
-
-/* 响应式布局 - 在大屏幕上确保一行显示5个卡片 */
-@media (min-width: 1200px) {
-  .statistics-section {
-    grid-template-columns: repeat(5, 1fr);
-  }
-}
-
-/* 中屏幕适配 */
-@media (min-width: 768px) and (max-width: 1199px) {
-  .statistics-section {
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  }
-}
-
-/* 小屏幕适配 */
-@media (max-width: 767px) {
-  .statistics-section {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-
-.stat-card {
-  background: white;
-  border-radius: 12px;
-  padding: 24px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-  transition: all 0.3s ease;
-  text-align: center;
-}
-
-.stat-card:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
-}
-
-.stat-card h3 {
-  margin: 0 0 16px 0;
-  font-size: 16px;
-  font-weight: 500;
-  color: #6c757d;
-  text-transform: capitalize;
-}
-
-.stat-value {
-  font-size: 36px;
-  font-weight: 700;
-  color: #212529;
-  margin-bottom: 8px;
-  line-height: 1;
-}
-
-.stat-change {
-  font-size: 14px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-}
-
-.stat-change.decrease {
-  color: #28a745;
-}
-
-.stat-change.increase {
-  color: #ffc107;
-}
-
-.stat-change.increase.overdue {
-  color: #dc3545;
-}
-
-/* 时间统计标识样式 */
-.stat-change.hours-stat {
-  color: #17a2b8;
-  font-weight: 500;
-  padding: 4px 12px;
-  border-radius: 16px;
-  background-color: #e3f2fd;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-}
-
-.stat-change.hours-stat i {
-    opacity: 0.8;
-    font-size: 16px;
-  }
-
-.stat-change.neutral {
-  color: #6c757d;
-}
-
-/* 任务完成趋势样式 */
-.trend-section {
-  background: white;
-  border-radius: 12px;
-  padding: 24px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-  margin-bottom: 30px;
-}
-
-.section-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 24px;
-}
-
-.section-header h3 {
-  margin: 0;
-  font-size: 20px;
-  font-weight: 600;
-  color: #212529;
-}
-
-.trend-select {
-  padding: 10px 24px 10px 16px;
-  border: 1px solid #ced4da;
-  border-radius: 8px;
-  font-size: 14px;
-  background: white;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  font-family: inherit;
-  appearance: none;
-  min-width: 100px;
-  text-align: left;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%236c757d' viewBox='0 0 16 16'%3E%3Cpath d='M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708l-3 3a.5.5 0 0 1-.708 0l-3-3a.5.5 0 0 1 0-.708z'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 8px center;
-  background-size: 16px;
-}
-
-.trend-select:focus {
-  outline: none;
-  border-color: #007bff;
-  box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
-}
-
-.trend-select:hover {
-  border-color: #adb5bd;
-  background-color: #f8f9fa;
-}
-
-.trend-select option {
-  padding: 10px;
-  background-color: white;
-  color: #212529;
-}
-
-/* 深色主题适配 */
-.dark-theme .trend-select {
-  background-color: #21262d;
-  border-color: #30363d;
-  color: #c9d1d9;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%238b949e' viewBox='0 0 16 16'%3E%3Cpath d='M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708l-3 3a.5.5 0 0 1-.708 0l-3-3a.5.5 0 0 1 0-.708z'/%3E%3C/svg%3E");
-}
-
-.dark-theme .trend-select:focus {
-  border-color: #007bff;
-  box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.2);
-}
-
-.dark-theme .trend-select:hover {
-  border-color: #8b949e;
-  background-color: #30363d;
-}
-
-.dark-theme .trend-select option {
-  background-color: #21262d;
-  color: #c9d1d9;
-}
 
 .trend-chart-container {
   width: 100%;

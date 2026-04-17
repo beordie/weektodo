@@ -90,35 +90,30 @@
     <!-- 统计概览 -->
     <div class="task-stats">
       <div class="stat-card">
-        <div class="stat-icon"><i class="bi-check-circle"></i></div>
         <div class="stat-content">
           <div class="stat-number">{{ completedTasksCount }}</div>
           <div class="stat-label">{{ $t('taskManagement.completed') }}</div>
         </div>
       </div>
-      <div class="stat-card" :class="{ 'stat-overdue': overdueTasksCount > 0 }">
-        <div class="stat-icon" :class="{ 'stat-icon-overdue': overdueTasksCount > 0 }"><i class="bi-exclamation-circle"></i></div>
+      <div class="stat-card">
         <div class="stat-content">
           <div class="stat-number">{{ overdueTasksCount }}</div>
           <div class="stat-label">{{ $t('taskManagement.overdue') }}</div>
         </div>
       </div>
-      <div class="stat-card" :class="{ 'stat-due-soon': dueSoonTasksCount > 0 }">
-        <div class="stat-icon" :class="{ 'stat-icon-due-soon': dueSoonTasksCount > 0 }"><i class="bi-clock"></i></div>
+      <div class="stat-card">
         <div class="stat-content">
           <div class="stat-number">{{ dueSoonTasksCount }}</div>
           <div class="stat-label">{{ $t('taskManagement.dueSoon') }}</div>
         </div>
       </div>
       <div class="stat-card">
-        <div class="stat-icon"><i class="bi-calendar"></i></div>
         <div class="stat-content">
           <div class="stat-number">{{ totalTasksCount }}</div>
           <div class="stat-label">{{ $t('taskManagement.totalTasks') }}</div>
         </div>
       </div>
       <div class="stat-card">
-        <div class="stat-icon"><i class="bi-clock"></i></div>
         <div class="stat-content">
           <div class="stat-number">{{ completedTasksTotalHours }}</div>
           <div class="stat-label">{{ $t('taskManagement.completedHours') }}</div>
@@ -1214,9 +1209,6 @@ export default {
     flex-wrap: wrap;
     gap: 20px;
     margin-bottom: 25px;
-    padding: 20px;
-    background: #f8f9fa;
-    border-radius: 8px;
   }
 
   .category-filter-select {
@@ -1334,108 +1326,36 @@ export default {
 .task-stats {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 16px;
+  gap: 20px;
   margin-bottom: 30px;
+  padding: 20px;
+  background-color: #f8f9fa;
+  border-radius: 8px;
 }
 
 .stat-card {
-  display: flex;
-  align-items: center;
-  gap: 16px;
+  background-color: white;
   padding: 20px;
-  background: white;
   border-radius: 8px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
   transition: transform 0.2s, box-shadow 0.2s;
 }
 
 .stat-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-}
-
-.stat-icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 48px;
-  height: 48px;
-  flex-shrink: 0; /* 防止图标在空间不足时收缩，保持圆形 */
-  background: #007bff;
-  color: white;
-  border-radius: 50%;
-  font-size: 20px;
+  transform: translateY(-5px);
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
 }
 
 .stat-content .stat-number {
-  font-size: 24px;
-  font-weight: 600;
-  color: #212529;
+  font-size: 32px;
+  font-weight: 700;
+  color: #333;
+  margin-bottom: 10px;
 }
 
 .stat-content .stat-label {
   color: #6c757d;
   font-size: 14px;
-}
-
-/* 逾期任务统计卡片样式 */
-.stat-card.stat-overdue {
-  border: 2px solid #dc3545;
-  background-color: #fdf2f2;
-  box-shadow: 0 4px 12px rgba(220, 53, 69, 0.15);
-}
-
-.stat-icon-overdue {
-  background-color: #dc3545;
-  color: white;
-  font-size: 24px;
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.stat-card.stat-overdue .stat-content .stat-number {
-  color: #dc3545;
-  font-size: 28px;
-  font-weight: 700;
-}
-
-.stat-card.stat-overdue .stat-content .stat-label {
-  color: #dc3545;
-  font-weight: 500;
-}
-
-/* 即将到期任务统计卡片样式 */
-.stat-card.stat-due-soon {
-  border: 2px solid #ffc107;
-  background-color: #fffdf0;
-  box-shadow: 0 4px 12px rgba(255, 193, 7, 0.15);
-}
-
-.stat-icon-due-soon {
-  background-color: #ffc107;
-  color: white;
-  font-size: 24px;
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.stat-card.stat-due-soon .stat-content .stat-number {
-  color: #856404;
-  font-size: 28px;
-  font-weight: 700;
-}
-
-.stat-card.stat-due-soon .stat-content .stat-label {
-  color: #856404;
-  font-weight: 500;
 }
 
 /* 任务列表 */
@@ -1452,16 +1372,16 @@ export default {
 .task-card {
   background: white;
   border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
   padding: 20px;
   cursor: pointer;
-  transition: all 0.3s;
+  transition: all 0.2s;
   border-left: 4px solid transparent;
 }
 
 .task-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
 .task-card.completed {
@@ -1471,26 +1391,20 @@ export default {
 
 .task-card.overdue {
   border-left-color: #dc3545;
-  border-left-width: 6px;
-  background-color: #fdf2f2;
-  box-shadow: 0 2px 12px rgba(220, 53, 69, 0.15);
 }
 
 .task-card.overdue .task-title {
   color: #dc3545;
-  font-weight: 600;
+  font-weight: 500;
 }
 
 .task-card.due-soon {
   border-left-color: #ffc107;
-  border-left-width: 6px;
-  background-color: #fffdf0;
-  box-shadow: 0 2px 12px rgba(255, 193, 7, 0.15);
 }
 
 .task-card.due-soon .task-title {
   color: #856404;
-  font-weight: 600;
+  font-weight: 500;
 }
 
 .task-card.completed .task-title {
@@ -2074,9 +1988,13 @@ select:focus {
   background: #21262d;
 }
 
+.dark-theme .task-stats {
+  background-color: #161b22;
+}
+
 .dark-theme .stat-card {
-  background: #161b22;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  background-color: #21262d;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
 .dark-theme .stat-content .stat-number {
@@ -2088,12 +2006,12 @@ select:focus {
 }
 
 .dark-theme .task-card {
-  background: #161b22;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  background: #21262d;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
 .dark-theme .task-card:hover {
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
 .dark-theme .task-title {
