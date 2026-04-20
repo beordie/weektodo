@@ -1,165 +1,233 @@
-# WeekToDo | FOSS Minimalist Weekly Planner
----
+# WeekToDo | 开源极简主义周计划应用
+
 ![GitHub all releases](https://img.shields.io/github/downloads/zuntek/weektodoweb/total) 
 [![vue3](https://img.shields.io/badge/vue-3.x-brightgreen.svg)](https://vuejs.org/)
+[![spring boot](https://img.shields.io/badge/Spring_Boot-3.x-green.svg)](https://spring.io/projects/spring-boot)
 
-WeekToDo is a free minimalist weekly planner app focused on privacy. Schedule your tasks and projects with to do lists and a calendar. Available for Windows, Mac, Linux or online.
+WeekToDo 是一款免费开源的极简主义周计划应用，专注于隐私保护。通过待办事项列表和日历来安排您的任务和项目。支持 Windows、Mac、Linux 和在线使用。
+
+本版本包含额外功能，如后端任务调度器、通知系统和 MySQL 数据库支持，以增强任务管理能力。
 
 ![Logo](https://weektodo.me/weektodo-preview.webp)
 
-## Features
+![Task Dashboard](resources/screenshots/task-dashboard.png)
 
-- Cross platform
-- Light/dark mode toggle
-- Custom To-do Lists
-- Drag and Drop
-- Multi-language
-- Sub-tasks
-- Markdown Support
-- Customizable user interface
-- Local Storage
-- Task Colors
-- Task Time
-- Recurring Tasks
-- Notifications and reminders
+![Task Manager](resources/screenshots/task-manager.png)
 
-## Roadmap
+## 🌟 主要功能
 
-- Touch mode
-- Mobile Version
-- Sync across devices
-- Workspaces
-- Themes
+- **跨平台支持** - 支持 Windows、Mac、Linux 和 Web 版本
+- **深色/浅色模式** - 支持主题切换
+- **自定义待办列表** - 创建个性化任务列表
+- **拖拽功能** - 支持任务拖拽排序
+- **多语言支持** - 支持 15+ 种语言
+- **子任务** - 支持任务分解
+- **Markdown 支持** - 支持 Markdown 格式描述
+- **可定制界面** - 灵活的界面配置
+- **本地存储** - 数据完全存储在本地
+- **任务颜色标记** - 支持任务颜色分类
+- **任务时间设置** - 支持任务时间安排
+- **重复任务** - 支持周期性任务
+- **通知提醒** - 支持系统通知和提醒
 
-## Sponsors
+## 🏗️ 项目架构
 
-WeekToDo is an GPL-licensed open source project with its ongoing development made possible entirely by users support and sponsors. If you'd like to join them, please consider [ sponsoring WeekToDo's development](https://weektodo.me/sponsor-us/) or [make the donation](https://weektodo.me/support-us/) you can.
+### 技术栈
 
-<p align="center">
-  <h3 align="center">Diamond Sponsors</h3>
-</p>
+- **前端框架**: Vue.js 3.x
+- **状态管理**: Vuex 4.x
+- **UI 框架**: Bootstrap 5 + Bootstrap Icons
+- **日期处理**: Moment.js
+- **国际化**: Vue i18n
+- **构建工具**: Vue CLI + Webpack
+- **桌面应用**: Electron 25.x
+- **数据存储**: IndexedDB (浏览器本地数据库)
 
-<p align="center">
-  <a target="_blank" href="https://password.link">
-  <img alt="Password.link - Securely share sensitive information with one-time links. Send and receive passwords and confidential documents." src="https://weektodo.me/img/sponsors/passwordlink/wide.webp" width="350">
-  </a>
-</p>
-
-<p align="center">
-  <h3 align="center">Silver Sponsors</h3>
-</p>
-
-<p align="center">
-  <a target="_blank" href="https://www.snapclear.app/">
-    <img alt="Snapclear - Remove image backgrounds with a single click for free." src="https://weektodo.me/img/sponsors/snapclear/wide.webp" width="150">
-  </a>
-  <a target="_blank" href="https://chrome.google.com/webstore/detail/easyfiller-automatic-form/oaphggcbnpminjffkjgldfepehcdjndp?hl=es&authuser=0">
-    <img alt="Easyfiller - Fill your forms with a single click for free" src="https://weektodo.me/img/sponsors/easyfiller/wide.webp" width="150">
-  </a>
-</p>
-
-  
-## Installation
-
-### Download installer 
-
-[Windows / Linux / macOS](https://github.com/zuntek/weektodoweb/releases/latest
-) 
-
-### External Stores
-
-#### Windows 
-
-[Uptodown](https://weektodo.uptodown.com/windows)
-
-#### macOS 
-
-[Macupdate](https://www.macupdate.com/app/mac/63506/weektodo)
-
-#### Linux 
-
-Snapd can be installed from the command line:
-
-```bash
-sudo apt update
-sudo apt install snapd
-```
-To install WeekToDo, simply use the following command:
-```bash
-sudo snap install weektodo
-```    
-
-## Build and Run From Source
-
-If you want to understand how WeekToDo works or want to debug an issue, you'll want to get the source, build it, and run it locally.
-
-### Installing Prerequisites
-
-You'll need git, a recent version of [Node.JS](https://nodejs.org/en/) (currently v16.X is recommended), [Yarn](https://yarnpkg.com/) and [Electron](https://www.electronjs.org/).
+### 项目结构
 
 ```
-git clone https://github.com/manuelernestog/weektodo
+src/
+├── assets/                    # 静态资源
+│   ├── languages/            # 多语言文件
+│   ├── style/                # 全局样式
+│   └── img/                  # 图片资源
+├── components/               # Vue 组件
+│   ├── layout/              # 布局组件
+│   ├── comfirmModals/       # 确认对话框
+│   └── *.vue                # 其他组件
+├── views/                    # 页面视图
+│   ├── toDoModal/           # 待办事项模态框
+│   ├── welcome/             # 欢迎页面
+│   └── *.vue                # 其他页面
+├── store/                    # Vuex 状态管理
+│   ├── modules/             # 状态模块
+│   └── store.js             # 主存储文件
+├── repositories/             # 数据访问层
+│   ├── dbRepository.js        # IndexedDB 操作
+│   ├── taskRepository.js      # 任务数据操作
+│   └── *.js                   # 其他数据仓库
+├── helpers/                  # 工具函数
+│   ├── tasksHelper.js        # 任务相关工具
+│   ├── notifications.js      # 通知功能
+│   └── *.js                  # 其他工具
+├── migrations/               # 数据迁移
+└── background.js             # Electron 主进程
+```
+
+### 核心模块
+
+#### 1. 任务管理系统
+- **任务存储**: 使用 IndexedDB 存储任务数据
+- **任务分类**: 支持创建和管理任务分类
+- **任务看板**: 提供看板视图管理任务
+- **任务关联**: 支持任务与待办事项关联
+
+#### 2. 待办事项系统
+- **日历视图**: 按日期组织的待办事项
+- **自定义列表**: 用户可创建自定义待办列表
+- **重复事件**: 支持周期性待办事项
+- **数据同步**: 本地数据持久化存储
+
+#### 3. 配置管理
+- **主题设置**: 深色/浅色主题切换
+- **界面布局**: 可调整的界面布局
+- **语言设置**: 多语言支持
+- **通知设置**: 灵活的通知配置
+
+#### 4. Electron 集成
+- **系统托盘**: 支持最小化到系统托盘
+- **自动启动**: 开机自启动功能
+- **本地通知**: 系统级通知提醒
+- **窗口管理**: 多窗口和状态管理
+
+## 🚀 快速开始
+
+### 环境要求
+
+- Node.js 16.x 或更高版本
+- Yarn 包管理器
+
+### 安装依赖
+
+```bash
+git clone https://github.com/manuelernestog/weektodo.git
 cd weektodo
 yarn install
-yarn run serve // to run web version
-yarn run electron:serve // to run native version
 ```
 
-### Docker
+### 开发模式
 
- To run the development web version use `docker-compose up`
+```bash
+# 运行 Web 版本
+yarn serve
 
-## Contributing
+# 运行 Electron 桌面版本
+yarn electron:serve
+```
 
-You can support this project in several ways:
+### 构建项目
 
-### Donate
+```bash
+# 构建 Web 版本
+yarn build
 
-https://weektodo.me/support-us
+# 构建 Electron 应用
+yarn electron:build
 
-### Share
+# 创建发布版本
+yarn release
+```
 
-- [Facebook](https://www.facebook.com/sharer/sharer.php?u=https%3A%2F%2Fweektodo.me%2F)
-- [Twitter](https://twitter.com/intent/tweet?url=https%3A%2F%2Fweektodo.me%2F&text=)
-- [Linkedin](https://www.linkedin.com/shareArticle?mini=true&url=https%3A%2F%2Fweektodo.me%2F&title=)
+### Docker 支持
 
-### Rate the app
+```bash
+# 使用 Docker 运行开发环境
+docker-compose up
+```
 
-- [ProductHunt](https://www.producthunt.com/posts/weektodo)
-- [AlternativeTo](https://alternativeto.net/software/weektodo/about/)
-- [SassHub](https://www.saashub.com/weektodo-reviews/new)
+## 📦 构建配置
 
-### Translations
+### Electron 构建选项
 
-Currently the system is developed in multiple languages, you can send me a correction of any error or you can add your language if it's not available.
+项目在 `vue.config.js` 中配置了 Electron 构建选项：
 
-You can find the base file with all the used words in english [here](src/assets/languages/en.json/)
+- **应用ID**: `weektodo-app.netlify.app`
+- **产品名称**: `WeekToDo`
+- **发布平台**: GitHub Releases
+- **Linux 支持**: deb、rpm、pacman、AppImage 格式
+- **Windows 支持**: NSIS 安装程序
+- **macOS 支持**: dmg、pkg 格式
 
-For add a new language Fork the repo and create a Pull Request creating a new file of the `translations/en.json` and name he file acording the [language code](https://gist.github.com/Josantonius/b455e315bc7f790d14b136d61d9ae469). 
+### 数据库结构
 
-If this is to dificult, you can donwload this [file](src/assets/languages/en.json/), translate it and send the file to the email contact@weektodo.me
- 
-## Contributing
+应用使用 IndexedDB 存储数据，包含以下对象存储：
 
-Weektodo is open-source. Pull requests and contributions are welcome! There are three ways to contribute: grab a [bug report](https://github.com/manuelernestog/issues?q=is%3Aopen+is%3Aissue+label%3Abug) or [feature suggestion](https://github.com/manuelernestog/issues?q=is%3Aissue+is%3Aopen+label%3Afeature) that has been marked `accepted` and dig in.
+- **todo_lists**: 待办事项列表数据
+- **repeating_events**: 重复事件配置
+- **repeating_events_by_date**: 按日期索引的重复事件
+- **tasks**: 任务数据
+- **task_categories**: 任务分类数据
 
-Read [Contributing.md](/CONTRIBUTING.md) for more information.
+## 🔧 开发指南
 
-## Author
+### 代码规范
 
-- [Manuel Ernesto Garcia](https://manuelernestogr.bio.link/)
+- 使用 ESLint 进行代码检查
+- 遵循 Vue.js 3 组合式 API 规范
+- 使用 SCSS 进行样式开发
+- 组件化开发模式
 
-## Contributors
+### 国际化
 
-- Logo Rebranding by [hallgraph](https://twitter.com/hallgraph)
-- [Translators](https://weektodo.me/about/)
+支持语言文件位于 `src/assets/languages/`，新增语言的步骤：
 
-<a href="https://github.com/manuelernestog/weektodo/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=manuelernestog/weektodo" />
-</a>
+1. 复制 `en.json` 文件
+2. 重命名为对应语言代码（如 `zh-CN.json`）
+3. 翻译内容并在 `languages.js` 中注册
 
+### 数据存储
 
+所有数据操作通过 `repositories` 层进行，提供统一的 API：
 
-Made with [contrib.rocks](https://contrib.rocks).
+```javascript
+// 示例：任务数据操作
+import taskRepository from './repositories/taskRepository';
 
-  
+// 获取任务
+taskRepository.get(taskId);
+
+// 更新任务
+taskRepository.update(taskId, taskData);
+
+// 删除任务
+taskRepository.remove(taskId);
+```
+
+## 🤝 贡献指南
+
+欢迎贡献代码！请遵循以下步骤：
+
+1. Fork 项目仓库
+2. 创建功能分支 (`git checkout -b feature/AmazingFeature`)
+3. 提交更改 (`git commit -m 'Add some AmazingFeature'`)
+4. 推送到分支 (`git push origin feature/AmazingFeature`)
+5. 创建 Pull Request
+
+详细的贡献指南请查看 [CONTRIBUTING.md](./CONTRIBUTING.md)。
+
+## 📝 许可证
+
+本项目采用 GPL 许可证开源 - 查看 [LICENSE](./LICENSE) 文件了解详情。
+
+## 🙏 致谢
+
+本项目是对原 WeekToDo 项目的复刻和增强。特别感谢原作者和贡献者们的出色工作：
+
+- **原仓库**: [manuelernestog/weektodo](https://github.com/manuelernestog/weektodo)
+- **原作者**: [Manuel Ernesto Garcia](https://manuelernestogr.bio.link/)
+
+没有他们的基础，这个增强版本就不可能实现。
+
+---
+
+**⭐ 如果这个项目对您有帮助，请给我们一个 Star！**
